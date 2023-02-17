@@ -43,10 +43,15 @@ contract Claimer {
         require(estimatedFees >= _minFees, "insuff fee");
 
         uint256 feePerClaim = estimatedFees / _winners.length;
+        uint256 actualFees;
 
         for (uint i = 0; i < _winners.length; i++) {
-            prizePool.claimPrize(_winners[i], _tiers[i], _winners[i], uint96(feePerClaim), _feeRecipient);
+            if (prizePool.claimPrize(_winners[i], _tiers[i], _winners[i], uint96(feePerClaim), _feeRecipient) != 0) {
+                actualFees += feePerClaim;
+            }
         }
+
+        return actualFees;
     }
 
 }
