@@ -2,13 +2,19 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "../src/Claimer.sol";
+
+import { Claimer } from "src/Claimer.sol";
+
+import { PrizePoolStub } from "./stub/PrizePoolStub.sol";
 
 contract ClaimerTest is Test {
+
     Claimer public claimer;
+    PrizePoolStub public prizePool;
 
     function setUp() public {
-        claimer = new Claimer();
+        prizePool = new PrizePoolStub();
+        claimer = new Claimer(prizePool);
     }
 
 }
