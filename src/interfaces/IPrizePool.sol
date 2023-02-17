@@ -8,11 +8,4 @@ interface IPrizePool {
     function drawStartedAt() external returns (uint256);
     function claimCount() external returns (uint256);
     function isApprovedClaimer(address _vault, address _claimer) external returns (bool);
-    function claimPrize(
-        address _winner,
-        uint8 _tier,
-        address _to,
-        uint96 _fee,
-        address _feeRecipient
-    ) external returns (uint256);
 }

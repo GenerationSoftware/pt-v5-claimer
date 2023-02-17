@@ -4,8 +4,9 @@ pragma solidity ^0.8.17;
 import { SD59x18 } from "prb-math/SD59x18.sol";
 import { UD2x18 } from "prb-math/UD2x18.sol";
 
-import { IPrizePool } from "./interfaces/IPrizePool.sol";
 import { LinearVRGDALib } from "./lib/LinearVRGDALib.sol";
+import { IPrizePool } from "./interfaces/IPrizePool.sol";
+import { IVault } from "./interfaces/IVault.sol";
 
 contract Claimer {
 
@@ -23,13 +24,13 @@ contract Claimer {
      * @return Fees earned
      */
     function claim(
-        address _vault,
+        IVault _vault,
         address[] calldata _winners,
         uint8[] calldata  _tiers,
         uint256 _minFees,
         address _feeRecipient
     ) external returns (uint256) {
-        require(prizePool.isApprovedClaimer(_vault, address(this)), "not approved claimer");
+        // require(prizePool.isApprovedClaimer(_vault, address(this)), "not approved claimer");
         require(_winners.length == _tiers.length, "data mismatch");
         uint256 estimatedFees = _estimateFees(_winners.length);
         require(estimatedFees >= _minFees, "insuff fee");
@@ -38,7 +39,7 @@ contract Claimer {
         uint256 actualFees;
 
         for (uint i = 0; i < _winners.length; i++) {
-            if (prizePool.claimPrize(_winners[i], _tiers[i], _winners[i], uint96(feePerClaim), _feeRecipient) != 0) {
+            if (_vault.claimPrize(_winners[i], _tiers[i], _winners[i], uint96(feePerClaim), _feeRecipient) != 0) {
                 actualFees += feePerClaim;
             }
         }

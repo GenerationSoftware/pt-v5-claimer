@@ -20,13 +20,4 @@ contract PrizePoolStub is IPrizePool {
     function isApprovedClaimer(address _vault, address _claimer) external pure override returns (bool) {
         return false;
     }
-    function claimPrize(
-        address _winner,
-        uint8 _tier,
-        address _to,
-        uint96 _fee,
-        address _feeRecipient
-    ) external pure override returns (uint256) {
-        return 0;
-    }
 }
