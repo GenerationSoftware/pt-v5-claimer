@@ -9,6 +9,3 @@
 	path = lib/prb-math
 	url = https://github.com/PaulRBerg/prb-math
 	branch = v3.3.0
-[submodule "lib/v5-prize-pool"]
-	path = lib/v5-prize-pool
-	url = https://github.com/pooltogether/v5-prize-pool

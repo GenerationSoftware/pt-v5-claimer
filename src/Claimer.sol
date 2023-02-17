@@ -31,15 +31,7 @@ contract Claimer {
     ) external returns (uint256) {
         require(prizePool.isApprovedClaimer(_vault, address(this)), "not approved claimer");
         require(_winners.length == _tiers.length, "data mismatch");
-        SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimateClaimCount(), prizePool.drawPeriodSeconds());
-        uint256 sold = prizePool.claimCount();
-        uint256 elapsed = block.timestamp - prizePool.drawStartedAt();
-
-        uint256 estimatedFees;
-        for (uint i = 0; i < _winners.length; i++) {
-            estimatedFees += LinearVRGDALib.getVRGDAPrice(targetPrice, elapsed, sold+i, perTimeUnit, decayConstant);
-        }
-
+        uint256 estimatedFees = _estimateFees(_winners.length);
         require(estimatedFees >= _minFees, "insuff fee");
 
         uint256 feePerClaim = estimatedFees / _winners.length;
@@ -52,6 +44,19 @@ contract Claimer {
         }
 
         return actualFees;
+    }
+
+    function _estimateFees(uint256 _claimCount) internal returns (uint256) {
+        SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimateClaimCount(), prizePool.drawPeriodSeconds());
+        uint256 sold = prizePool.claimCount();
+        uint256 elapsed = block.timestamp - prizePool.drawStartedAt();
+
+        uint256 estimatedFees;
+        for (uint i = 0; i < _claimCount; i++) {
+            estimatedFees += LinearVRGDALib.getVRGDAPrice(targetPrice, elapsed, sold+i, perTimeUnit, decayConstant);
+        }
+
+        return estimatedFees;
     }
 
 }
