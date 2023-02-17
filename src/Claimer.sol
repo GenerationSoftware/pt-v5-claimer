@@ -23,15 +23,15 @@ contract Claimer {
     /***
      * @return Fees earned
      */
-    function claim(
+    function claimPrizes(
         IVault _vault,
         address[] calldata _winners,
         uint8[] calldata  _tiers,
         uint256 _minFees,
         address _feeRecipient
     ) external returns (uint256) {
-        // require(prizePool.isApprovedClaimer(_vault, address(this)), "not approved claimer");
         require(_winners.length == _tiers.length, "data mismatch");
+        require(_winners.length > 0, "no winners passed");
         uint256 estimatedFees = _estimateFees(_winners.length);
         require(estimatedFees >= _minFees, "insuff fee");
 
@@ -45,6 +45,10 @@ contract Claimer {
         }
 
         return actualFees;
+    }
+
+    function estimateFees(uint256 _claimCount) external returns (uint256) {
+        return _estimateFees(_claimCount);
     }
 
     function _estimateFees(uint256 _claimCount) internal returns (uint256) {

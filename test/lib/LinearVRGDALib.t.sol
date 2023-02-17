@@ -17,10 +17,22 @@ contract LinearVRGDALibTest is Test {
         assertEq(LinearVRGDALib.getDecayConstant(ud2x18(2e18)).unwrap(), 0.693147180559945309e18);
     }
 
-    function testGetVRGDAPrice() public {
+    function testGetVRGDAPrice_atRate() public {
+        SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(1000, 1000);
+        SD59x18 decayConstant = LinearVRGDALib.getDecayConstant(ud2x18(1.1e18));
+        assertEq(LinearVRGDALib.getVRGDAPrice(0.0001e18, 1, 0, perTimeUnit, decayConstant), 0.0001e18);
+    }
+
+    function testGetVRGDAPrice_behind() public {
         SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(100, 1000);
         SD59x18 decayConstant = LinearVRGDALib.getDecayConstant(ud2x18(1.1e18));
         assertEq(LinearVRGDALib.getVRGDAPrice(0.0001e18, 100, 0, perTimeUnit, decayConstant), 0.531302261184827419e18);
+    }
+
+    function testGetVRGDAPrice_ahead() public {
+        SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(1000, 1000);
+        SD59x18 decayConstant = LinearVRGDALib.getDecayConstant(ud2x18(1.1e18));
+        assertEq(LinearVRGDALib.getVRGDAPrice(0.0001e18, 11, 20, perTimeUnit, decayConstant), 0.000038554328942953e18);
     }
 
 }

@@ -7,5 +7,4 @@ interface IPrizePool {
     function drawPeriodSeconds() external returns (uint256);
     function drawStartedAt() external returns (uint256);
     function claimCount() external returns (uint256);
-    function isApprovedClaimer(address _vault, address _claimer) external returns (bool);
 }
