@@ -32,7 +32,7 @@ contract ClaimerTest is Test {
         vault = new VaultStub();
         claimer = new Claimer(prizePool, ud2x18(1.1e18), TARGET_PRICE);
     }
- 
+
     function testConstructor() public {
         claimer = new Claimer(prizePool, ud2x18(1e18), TARGET_PRICE);
         assertEq(claimer.decayConstant().unwrap(), 0);
@@ -106,14 +106,14 @@ contract ClaimerTest is Test {
     }
 
     function mockPrizePool(
-        uint256 estimateClaimCount,
+        uint256 estimatedPrizeCount,
         uint256 drawPeriodSeconds,
-        uint256 drawStartedAt,
+        uint256 lastCompletedDrawStartedAt,
         uint256 claimCount
     ) public {
-        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.estimateClaimCount.selector), abi.encodePacked(estimateClaimCount));
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.estimatedPrizeCount.selector), abi.encodePacked(estimatedPrizeCount));
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.drawPeriodSeconds.selector), abi.encodePacked(drawPeriodSeconds));
-        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.drawStartedAt.selector), abi.encodePacked(drawStartedAt));
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.lastCompletedDrawStartedAt.selector), abi.encodePacked(lastCompletedDrawStartedAt));
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.claimCount.selector), abi.encodePacked(claimCount));
     }
 

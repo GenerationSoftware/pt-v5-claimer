@@ -16,7 +16,7 @@ contract Claimer {
 
     constructor(IPrizePool _prizePool, UD2x18 _priceDeltaScale, uint256 _targetPrice) {
         prizePool = _prizePool;
-        decayConstant = LinearVRGDALib.getDecayConstant(_priceDeltaScale); 
+        decayConstant = LinearVRGDALib.getDecayConstant(_priceDeltaScale);
         targetPrice = _targetPrice;
     }
 
@@ -52,11 +52,13 @@ contract Claimer {
     }
 
     function _estimateFees(uint256 _claimCount) internal returns (uint256) {
-        SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimateClaimCount(), prizePool.drawPeriodSeconds());
+        SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), prizePool.drawPeriodSeconds());
+
         uint256 sold = prizePool.claimCount();
-        uint256 elapsed = block.timestamp - prizePool.drawStartedAt();
+        uint256 elapsed = block.timestamp - prizePool.lastCompletedDrawStartedAt();
 
         uint256 estimatedFees;
+
         for (uint i = 0; i < _claimCount; i++) {
             estimatedFees += LinearVRGDALib.getVRGDAPrice(targetPrice, elapsed, sold+i, perTimeUnit, decayConstant);
         }
