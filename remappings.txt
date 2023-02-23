@@ -1,7 +1,6 @@
 ds-test/=lib/forge-std/lib/ds-test/src/
 forge-std/=lib/forge-std/src/
-solmate/=lib/solmate/src/
-src/=src/
 prb-math/=lib/prb-math/src/
-v5-prize-pool/=lib/v5-prize-pool/src/
-v5-twab-controller/=lib/v5-prize-pool/lib/v5-twab-controller/src/
+solmate/=lib/solmate/src/
+
+src/=src/
