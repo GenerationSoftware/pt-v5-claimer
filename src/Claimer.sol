@@ -3,18 +3,18 @@ pragma solidity ^0.8.17;
 
 import { SD59x18 } from "prb-math/SD59x18.sol";
 import { UD2x18 } from "prb-math/UD2x18.sol";
+import { PrizePool } from "v5-prize-pool/PrizePool.sol";
 
 import { LinearVRGDALib } from "./lib/LinearVRGDALib.sol";
-import { IPrizePool } from "./interfaces/IPrizePool.sol";
 import { IVault } from "./interfaces/IVault.sol";
 
 contract Claimer {
 
-    IPrizePool public immutable prizePool;
+    PrizePool public immutable prizePool;
     SD59x18 public immutable decayConstant;
     uint256 public immutable targetPrice;
 
-    constructor(IPrizePool _prizePool, UD2x18 _priceDeltaScale, uint256 _targetPrice) {
+    constructor(PrizePool _prizePool, UD2x18 _priceDeltaScale, uint256 _targetPrice) {
         prizePool = _prizePool;
         decayConstant = LinearVRGDALib.getDecayConstant(_priceDeltaScale); 
         targetPrice = _targetPrice;
@@ -52,9 +52,10 @@ contract Claimer {
     }
 
     function _estimateFees(uint256 _claimCount) internal returns (uint256) {
-        SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimateClaimCount(), prizePool.drawPeriodSeconds());
+        uint256 drawPeriodSeconds = prizePool.drawPeriodSeconds();
+        SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), drawPeriodSeconds);
         uint256 sold = prizePool.claimCount();
-        uint256 elapsed = block.timestamp - prizePool.drawStartedAt();
+        uint256 elapsed = block.timestamp - (prizePool.lastCompletedDrawStartedAt() + drawPeriodSeconds);
 
         uint256 estimatedFees;
         for (uint i = 0; i < _claimCount; i++) {

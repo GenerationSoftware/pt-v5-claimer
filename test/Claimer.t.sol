@@ -58,7 +58,7 @@ contract ClaimerTest is Test {
         uint8[] memory tiers = new uint8[](1);
         tiers[0] = 0;
         // fee should be the target rn
-        mockPrizePool(100, 1000, block.timestamp, 0);
+        mockPrizePool(100, 1000, 0, 0);
         vm.expectRevert("insuff fee");
         claimer.claimPrizes(vault, winners, tiers, 1e18, address(this));
     }
@@ -70,7 +70,7 @@ contract ClaimerTest is Test {
         uint8[] memory tiers = new uint8[](2);
         tiers[0] = 1;
         tiers[1] = 1;
-        mockPrizePool(1000, 1000, block.timestamp-1, 0);
+        mockPrizePool(1000, 1000, -1, 0);
         uint256 totalFees = TARGET_PRICE + AHEAD1_PRICE;
         mockClaimPrize(winners[0], 1, winners[0], uint96(totalFees/2), address(this), 100);
         mockClaimPrize(winners[1], 1, winners[1], uint96(totalFees/2), address(this), 100);
@@ -79,41 +79,41 @@ contract ClaimerTest is Test {
     }
 
     function testEstimateFees_zero() public {
-        mockPrizePool(1000, 1000, block.timestamp, 0);
+        mockPrizePool(1000, 1000, 0, 0);
         assertEq(claimer.estimateFees(0), 0);
     }
 
     function testEstimateFees_ahead1() public {
         // trying to claim ahead of time
-        mockPrizePool(1000, 1000, block.timestamp, 0);
+        mockPrizePool(1000, 1000, 0, 0);
         assertEq(claimer.estimateFees(1), AHEAD1_PRICE);
     }
 
     function testEstimateFees_onTime() public {
         // claiming right on time
-        mockPrizePool(1000, 1000, block.timestamp-1, 0);
+        mockPrizePool(1000, 1000, -1, 0);
         assertEq(claimer.estimateFees(1), TARGET_PRICE);
     }
 
     function testEstimateFees_behind1() public {
-        mockPrizePool(1000, 1000, block.timestamp-2, 0);
+        mockPrizePool(1000, 1000, -2, 0);
         assertEq(claimer.estimateFees(1), BEHIND1_PRICE);
     }
 
     function testEstimateFees_two() public {
-        mockPrizePool(1000, 1000, block.timestamp-1, 0);
+        mockPrizePool(1000, 1000, -1, 0);
         assertEq(claimer.estimateFees(2), TARGET_PRICE + AHEAD1_PRICE);
     }
 
     function mockPrizePool(
-        uint256 estimateClaimCount,
+        uint256 estimatedPrizeCount,
         uint256 drawPeriodSeconds,
-        uint256 drawStartedAt,
+        int256 drawEndedRelativeToNow,
         uint256 claimCount
     ) public {
-        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.estimateClaimCount.selector), abi.encodePacked(estimateClaimCount));
+        vm.mockCall(address(prizePool), abi.encodeWithSignature("estimatedPrizeCount()"), abi.encodePacked(estimatedPrizeCount));
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.drawPeriodSeconds.selector), abi.encodePacked(drawPeriodSeconds));
-        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.drawStartedAt.selector), abi.encodePacked(drawStartedAt));
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.lastCompletedDrawStartedAt.selector), abi.encodePacked(int256(block.timestamp) - int256(drawPeriodSeconds) + drawEndedRelativeToNow));
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.claimCount.selector), abi.encodePacked(claimCount));
     }
 
