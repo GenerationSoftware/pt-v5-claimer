@@ -22,6 +22,5 @@ contract PrizePoolStub is PrizePool {
         UD2x18.wrap(0),
         SD1x18.wrap(0)
     ) {
-
     }
 }

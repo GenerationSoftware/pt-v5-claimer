@@ -32,7 +32,7 @@ contract ClaimerTest is Test {
         vault = new VaultStub();
         claimer = new Claimer(prizePool, ud2x18(1.1e18), TARGET_PRICE);
     }
- 
+
     function testConstructor() public {
         claimer = new Claimer(prizePool, ud2x18(1e18), TARGET_PRICE);
         assertEq(claimer.decayConstant().unwrap(), 0);

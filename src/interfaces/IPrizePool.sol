@@ -3,8 +3,8 @@
 pragma solidity 0.8.17;
 
 interface IPrizePool {
-    function estimateClaimCount() external returns (uint256);
+    function estimatedPrizeCount() external returns (uint256);
     function drawPeriodSeconds() external returns (uint256);
-    function drawStartedAt() external returns (uint256);
+    function lastCompletedDrawStartedAt() external returns (uint256);
     function claimCount() external returns (uint256);
 }
