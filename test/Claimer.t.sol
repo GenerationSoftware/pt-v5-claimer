@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 
-import { Claimer } from "src/Claimer.sol";
+import { Claimer, Claim } from "src/Claimer.sol";
 import { ud2x18 } from "prb-math/UD2x18.sol";
 
 import { PrizePoolStub } from "./stub/PrizePoolStub.sol";
@@ -30,90 +30,94 @@ contract ClaimerTest is Test {
         vm.warp(10 days);
         prizePool = new PrizePoolStub();
         vault = new VaultStub();
-        claimer = new Claimer(prizePool, ud2x18(1.1e18), TARGET_PRICE);
+        claimer = new Claimer(prizePool, ud2x18(1.1e18), TARGET_PRICE, ud2x18(0.5e18));
     }
 
     function testConstructor() public {
-        claimer = new Claimer(prizePool, ud2x18(1e18), TARGET_PRICE);
+        claimer = new Claimer(prizePool, ud2x18(1e18), TARGET_PRICE, ud2x18(0.5e18));
         assertEq(claimer.decayConstant().unwrap(), 0);
     }
 
     function testClaimPrizes_empty() public {
-        address[] memory winners = new address[](0);
-        uint8[] memory tiers = new uint8[](0);
+        Claim[] memory claims = new Claim[](0);
         vm.expectRevert("no winners passed");
-        claimer.claimPrizes(vault, winners, tiers, 1, address(this));
-    }
-
-    function testClaimPrizes_mismatch() public {
-        address[] memory winners = new address[](1);
-        uint8[] memory tiers = new uint8[](2);
-        vm.expectRevert("data mismatch");
-        claimer.claimPrizes(vault, winners, tiers, 1, address(this));
+        claimer.claimPrizes(1, claims, address(this));
     }
 
     function testClaimPrizes_insuff() public {
-        address[] memory winners = new address[](1);
-        winners[0] = winner1;
-        uint8[] memory tiers = new uint8[](1);
-        tiers[0] = 0;
+        Claim[] memory claims = new Claim[](1);
+        claims[0] = Claim({
+            vault: vault,
+            winner: winner1,
+            tier: 0
+        });
         // fee should be the target rn
-        mockPrizePool(100, 1000, 0, 0);
+        mockPrizePool(1, 100, 1000, 0, 0);
         vm.expectRevert("insuff fee");
-        claimer.claimPrizes(vault, winners, tiers, 1e18, address(this));
+        claimer.claimPrizes(1, claims, address(this));
     }
 
     function testClaimPrizes_fees() public {
-        address[] memory winners = new address[](2);
-        winners[0] = winner1;
-        winners[1] = winner2;
-        uint8[] memory tiers = new uint8[](2);
-        tiers[0] = 1;
-        tiers[1] = 1;
-        mockPrizePool(1000, 1000, -1, 0);
-        uint256 totalFees = TARGET_PRICE + AHEAD1_PRICE;
-        mockClaimPrize(winners[0], 1, winners[0], uint96(totalFees/2), address(this), 100);
-        mockClaimPrize(winners[1], 1, winners[1], uint96(totalFees/2), address(this), 100);
-        uint256 fees = claimer.claimPrizes(vault, winners, tiers, 0.0001e18, address(this));
-        assertEq(fees, totalFees);
+        Claim[] memory claims = new Claim[](2);
+        claims[0] = Claim({
+            vault: vault,
+            winner: winner1,
+            tier: 1
+        });
+        claims[1] = Claim({
+            vault: vault,
+            winner: winner2,
+            tier: 1
+        });
+        mockPrizePool(1, 1000, 1000, -1, 0);
+        mockClaimPrize(claims[0].winner, 1, claims[0].winner, uint96(TARGET_PRICE), address(this), 100);
+        mockClaimPrize(claims[1].winner, 1, claims[1].winner, uint96(AHEAD1_PRICE), address(this), 100);
+        uint256 claimCount = claimer.claimPrizes(1, claims, address(this));
+        assertEq(claimCount, 2);
     }
 
-    function testEstimateFees_zero() public {
-        mockPrizePool(1000, 1000, 0, 0);
-        assertEq(claimer.estimateFees(0), 0);
+    function testComputeFees_zero() public {
+        mockPrizePool(1, 1000, 1000, 0, 0);
+        assertEq(claimer.computeFees(0), 0);
     }
 
-    function testEstimateFees_ahead1() public {
+    function testComputeFees_ahead1() public {
         // trying to claim ahead of time
-        mockPrizePool(1000, 1000, 0, 0);
-        assertEq(claimer.estimateFees(1), AHEAD1_PRICE);
+        mockPrizePool(1, 1000, 1000, 0, 0);
+        assertEq(claimer.computeFees(1), AHEAD1_PRICE);
     }
 
-    function testEstimateFees_onTime() public {
+    function testComputeFees_onTime() public {
         // claiming right on time
-        mockPrizePool(1000, 1000, -1, 0);
-        assertEq(claimer.estimateFees(1), TARGET_PRICE);
+        mockPrizePool(1, 1000, 1000, -1, 0);
+        assertEq(claimer.computeFees(1), TARGET_PRICE);
     }
 
-    function testEstimateFees_behind1() public {
-        mockPrizePool(1000, 1000, -2, 0);
-        assertEq(claimer.estimateFees(1), BEHIND1_PRICE);
+    function testComputeFees_behind1() public {
+        mockPrizePool(1, 1000, 1000, -2, 0);
+        assertEq(claimer.computeFees(1), BEHIND1_PRICE);
     }
 
-    function testEstimateFees_two() public {
-        mockPrizePool(1000, 1000, -1, 0);
-        assertEq(claimer.estimateFees(2), TARGET_PRICE + AHEAD1_PRICE);
+    function testComputeFees_two() public {
+        mockPrizePool(1, 1000, 1000, -1, 0);
+        assertEq(claimer.computeFees(2), TARGET_PRICE + AHEAD1_PRICE);
     }
 
     function mockPrizePool(
+        uint256 drawId,
         uint256 estimatedPrizeCount,
         uint256 drawPeriodSeconds,
         int256 drawEndedRelativeToNow,
         uint256 claimCount
     ) public {
+        vm.mockCall(address(prizePool), abi.encodeWithSignature("lastCompletedDrawId()"), abi.encodePacked(drawId));
         vm.mockCall(address(prizePool), abi.encodeWithSignature("estimatedPrizeCount()"), abi.encodePacked(estimatedPrizeCount));
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.drawPeriodSeconds.selector), abi.encodePacked(drawPeriodSeconds));
-        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.lastCompletedDrawStartedAt.selector), abi.encodePacked(int256(block.timestamp) - int256(drawPeriodSeconds) + drawEndedRelativeToNow));
+        vm.mockCall(
+            address(prizePool),
+            abi.encodeWithSelector(prizePool.lastCompletedDrawStartedAt.selector),
+            abi.encodePacked(int256(block.timestamp) - int256(drawPeriodSeconds) + drawEndedRelativeToNow)
+        );
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.claimCount.selector), abi.encodePacked(claimCount));
     }
 

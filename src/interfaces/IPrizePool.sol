@@ -7,4 +7,5 @@ interface IPrizePool {
     function drawPeriodSeconds() external returns (uint256);
     function lastCompletedDrawStartedAt() external returns (uint256);
     function claimCount() external returns (uint256);
+    function calculatePrizeSize(uint8 _tier) external view returns (uint256);
 }
