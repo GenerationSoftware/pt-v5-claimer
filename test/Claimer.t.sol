@@ -52,7 +52,7 @@ contract ClaimerTest is Test {
             tier: 0
         });
         // fee should be the target rn
-        mockPrizePool(1, 100, 1000, 0, 0);
+        mockPrizePool(1, 100, 1000, 0, 0, 1e18);
         vm.expectRevert("insuff fee");
         claimer.claimPrizes(1, claims, address(this));
     }
@@ -69,7 +69,7 @@ contract ClaimerTest is Test {
             winner: winner2,
             tier: 1
         });
-        mockPrizePool(1, 1000, 1000, -1, 0);
+        mockPrizePool(1, 1000, 1000, -1, 0, 1e18);
         mockClaimPrize(claims[0].winner, 1, claims[0].winner, uint96(TARGET_PRICE), address(this), 100);
         mockClaimPrize(claims[1].winner, 1, claims[1].winner, uint96(AHEAD1_PRICE), address(this), 100);
         uint256 claimCount = claimer.claimPrizes(1, claims, address(this));
@@ -77,29 +77,29 @@ contract ClaimerTest is Test {
     }
 
     function testComputeFees_zero() public {
-        mockPrizePool(1, 1000, 1000, 0, 0);
+        mockPrizePool(1, 1000, 1000, 0, 0, 1e18);
         assertEq(claimer.computeFees(0), 0);
     }
-
+x
     function testComputeFees_ahead1() public {
         // trying to claim ahead of time
-        mockPrizePool(1, 1000, 1000, 0, 0);
+        mockPrizePool(1, 1000, 1000, 0, 0, 1e18);
         assertEq(claimer.computeFees(1), AHEAD1_PRICE);
     }
 
     function testComputeFees_onTime() public {
         // claiming right on time
-        mockPrizePool(1, 1000, 1000, -1, 0);
+        mockPrizePool(1, 1000, 1000, -1, 0, 1e18);
         assertEq(claimer.computeFees(1), TARGET_PRICE);
     }
 
     function testComputeFees_behind1() public {
-        mockPrizePool(1, 1000, 1000, -2, 0);
+        mockPrizePool(1, 1000, 1000, -2, 0, 1e18);
         assertEq(claimer.computeFees(1), BEHIND1_PRICE);
     }
 
     function testComputeFees_two() public {
-        mockPrizePool(1, 1000, 1000, -1, 0);
+        mockPrizePool(1, 1000, 1000, -1, 0, 1e18);
         assertEq(claimer.computeFees(2), TARGET_PRICE + AHEAD1_PRICE);
     }
 
@@ -108,11 +108,14 @@ contract ClaimerTest is Test {
         uint256 estimatedPrizeCount,
         uint256 drawPeriodSeconds,
         int256 drawEndedRelativeToNow,
-        uint256 claimCount
+        uint256 claimCount,
+        uint256 smallestPrizeSize
     ) public {
         vm.mockCall(address(prizePool), abi.encodeWithSignature("lastCompletedDrawId()"), abi.encodePacked(drawId));
         vm.mockCall(address(prizePool), abi.encodeWithSignature("estimatedPrizeCount()"), abi.encodePacked(estimatedPrizeCount));
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.drawPeriodSeconds.selector), abi.encodePacked(drawPeriodSeconds));
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.numberOfTiers.selector), abi.encodePacked(uint256(2)));
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.calculatePrizeSize.selector, 1), abi.encodePacked(smallestPrizeSize));
         vm.mockCall(
             address(prizePool),
             abi.encodeWithSelector(prizePool.lastCompletedDrawStartedAt.selector),

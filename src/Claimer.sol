@@ -24,6 +24,7 @@ contract Claimer is Multicall {
     UD2x18 public immutable maxFeePortionOfPrize;
     SD59x18 public immutable decayConstant;
     uint256 public immutable targetPrice;
+    uint256 public immutable drawPeriodSeconds;
 
     constructor(
         PrizePool _prizePool,
@@ -35,6 +36,7 @@ contract Claimer is Multicall {
         maxFeePortionOfPrize = _maxFeePortionOfPrize;
         decayConstant = LinearVRGDALib.getDecayConstant(_priceDeltaScale);
         targetPrice = _targetPrice;
+        drawPeriodSeconds = prizePool.drawPeriodSeconds();
     }
 
     function claimPrizes(
@@ -48,20 +50,12 @@ contract Claimer is Multicall {
         }
 
         // cache loads
-        uint256 targetPrice_ = targetPrice;
-        SD59x18 decayConstant_ = decayConstant;
+        // uint256 targetPrice_ = targetPrice;
+        // SD59x18 decayConstant_ = decayConstant;
 
-        SD59x18 perTimeUnit;
-        uint256 elapsed;
-
-        {
-            // Draw period is immutable, we can cache this
-            uint256 drawPeriodSeconds = prizePool.drawPeriodSeconds();
-
-            // The below values can change if the draw changes, so we'll cache them then add a protection below to ensure draw id is the same
-            perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), drawPeriodSeconds);
-            elapsed = block.timestamp - (prizePool.lastCompletedDrawStartedAt() + drawPeriodSeconds);
-        }
+        // The below values can change if the draw changes, so we'll cache them then add a protection below to ensure draw id is the same
+        SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), drawPeriodSeconds);
+        uint256 elapsed = block.timestamp - (prizePool.lastCompletedDrawStartedAt() + drawPeriodSeconds);
 
         // compute the maximum fee based on the smallest prize size.
         uint256 maxFee = _computeMaxFee();
@@ -72,7 +66,7 @@ contract Claimer is Multicall {
             if (prizePool.lastCompletedDrawId() != drawId) {
                 revert DrawInvalid();
             }
-            uint256 fee = _computeFeeForNextClaim(targetPrice_, decayConstant_, perTimeUnit, elapsed, prizePool.claimCount(), maxFee);
+            uint256 fee = _computeFeeForNextClaim(targetPrice, decayConstant, perTimeUnit, elapsed, prizePool.claimCount(), maxFee);
             if (_claims[i].vault.claimPrize(_claims[i].winner, _claims[i].tier, _claims[i].winner, uint96(fee > maxFee ? maxFee : fee), _feeRecipient) > 0) {
                 claimCount++;
             }
@@ -100,7 +94,7 @@ contract Claimer is Multicall {
         uint maxFee = _computeMaxFee();
         uint sold = prizePool.claimCount();
         uint fees;
-        for (uint i = 0; i < _claimCount; i++) {
+        for (uint i = 0; i <= _claimCount; i++) {
             fees += _computeFeeForNextClaim(targetPrice_, decayConstant_, perTimeUnit, elapsed, sold + i, maxFee);
         }
         return fees;
