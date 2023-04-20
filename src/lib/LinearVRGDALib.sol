@@ -44,7 +44,7 @@ library LinearVRGDALib {
     /// @param _minFee The fee at the start
     /// @param _maxFee The fee after the time has elapsed
     /// @param _time The elapsed time to reach _maxFee
-    /// @return The 
+    /// @return The price delta scale that will ensure the _minFee grows to the _maxFee in _time
     function getMaximumPriceDeltaScale(uint256 _minFee, uint256 _maxFee, uint256 _time) internal pure returns (UD2x18) {
         int256 div = wadDiv(int256(_maxFee), int256(_minFee));
         int256 ln = wadLn(div);
