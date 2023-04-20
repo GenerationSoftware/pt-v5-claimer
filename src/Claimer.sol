@@ -18,15 +18,32 @@ struct Claim {
     uint8 tier;
 }
 
+/// @title Variable Rate Gradual Dutch Auction (VRGDA) Claimer
+/// @author PoolTogether Inc. Team
+/// @notice This contract uses a variable rate gradual dutch auction to inventivize prize claims on behalf of others
 contract Claimer is Multicall {
 
+    /// @notice Emitted when the passed draw id does not match the Prize Pool's completed draw id
     error DrawInvalid();
 
+    /// @notice The Prize Pool that this Claimer is claiming prizes for
     PrizePool public immutable prizePool;
+
+    /// @notice The maximum fee that can be charged as a portion of the smallest prize size. Fixed point 18 number
     UD2x18 public immutable maxFeePortionOfPrize;
+
+    /// @notice The VRGDA decay constant computed in the constructor
     SD59x18 public immutable decayConstant;
+
+    /// @notice The minimum fee that will be charged
     uint256 public immutable minimumFee;
 
+    /// @notice Constructs a new Claimer
+    /// @param _prizePool The prize pool to claim for
+    /// @param _minimumFee The minimum fee that should be charged
+    /// @param _maximumFee The maximum fee that should be charged
+    /// @param _timeToReachMaxFee The time it should take to reach the maximum fee (for example should be the draw period in seconds)
+    /// @param _maxFeePortionOfPrize The maximum fee that can be charged as a portion of the smallest prize size. Fixed point 18 number
     constructor(
         PrizePool _prizePool,
         uint256 _minimumFee,
@@ -40,6 +57,12 @@ contract Claimer is Multicall {
         minimumFee = _minimumFee;
     }
 
+    /// @notice Allows the call to claim prizes on behalf of others.
+    /// @param drawId The draw id to claim prizes for
+    /// @param _claims The prize claims
+    /// @param _feeRecipient The address to receive the claim fees
+    /// @return claimCount The number of successful claims
+    /// @return totalFees The total fees collected across all successful claims
     function claimPrizes(
         uint256 drawId,
         Claim[] calldata _claims,
@@ -77,16 +100,28 @@ contract Claimer is Multicall {
         }
     }
 
+    /// @notice Computes the maximum fee that can be charged
+    /// @return The maximum fee that can be charged
     function computeMaxFee() external returns (uint256) {
         return _computeMaxFee();
     }
 
+    /// @notice Computes the maximum fee that can be charged
+    /// @return The maximum fee that can be charged
     function _computeMaxFee() internal returns (uint256) {
         // compute the maximum fee that can be charged
         uint256 prize = prizePool.calculatePrizeSize(prizePool.numberOfTiers() - 1);
         return UD60x18.unwrap(maxFeePortionOfPrize.intoUD60x18().mul(UD60x18.wrap(prize)));
     }
 
+    /// @notice Computes the fee for the next claim
+    /// @param _minimumFee The minimum fee that should be charged
+    /// @param _decayConstant The VRGDA decay constant
+    /// @param _perTimeUnit The num to be claimed per second
+    /// @param _elapsed The number of seconds that have elapsed
+    /// @param _sold The number of prizes that were claimed
+    /// @param _maxFee The maximum fee that can be charged
+    /// @return The fee to charge for the next claim
     function _computeFeeForNextClaim(
         uint256 _minimumFee,
         SD59x18 _decayConstant,

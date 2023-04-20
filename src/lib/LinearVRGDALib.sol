@@ -11,10 +11,17 @@ import {wadExp, wadLn, wadMul, unsafeWadMul, toWadUnsafe, unsafeWadDiv, wadDiv} 
 /// @notice Sell tokens roughly according to an issuance schedule.
 library LinearVRGDALib {
 
+    /// @notice Computes the decay constant using the priceDeltaScale
+    /// @param _priceDeltaScale The price change per time unit
+    /// @return The decay constant
     function getDecayConstant(UD2x18 _priceDeltaScale) internal pure returns (SD59x18) {
         return SD59x18.wrap(wadLn(int256(uint256(_priceDeltaScale.unwrap()))));
     }
 
+    /// @notice Gets the desired number of claims to be sold per second
+    /// @param _count The total number of claims
+    /// @param _durationSeconds The duration over which claiming should occur
+    /// @return The target number of claims per second
     function getPerTimeUnit(uint256 _count, uint256 _durationSeconds) internal pure returns (SD59x18) {
         return toSD59x18(int256(_count)).div(toSD59x18(int256(_durationSeconds)));
     }
