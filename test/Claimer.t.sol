@@ -16,9 +16,10 @@ contract ClaimerTest is Test {
     uint256 public constant MAXIMUM_FEE = 2**128;
     uint256 public constant TIME_TO_REACH_MAX = 86400;
     uint256 public constant ESTIMATED_PRIZES = 1000;
-    uint256 public constant SMALLED_PRIZE_SIZE = 1e18;
+    uint256 public constant SMALLEST_PRIZE_SIZE = 1e18;
     uint256 public constant UNSOLD_100_SECONDS_IN_FEE = 100893106284719;
     uint256 public constant SOLD_ONE_100_SECONDS_IN_FEE = 95351966415391;
+    uint64 public constant MAX_FEE_PERCENTAGE_OF_PRIZE = 0.5e18;
 
     Claimer public claimer;
     PrizePoolStub public prizePool;
@@ -38,7 +39,7 @@ contract ClaimerTest is Test {
         vm.warp(TIME_TO_REACH_MAX * 100);
         prizePool = new PrizePoolStub();
         vault = new VaultStub();
-        claimer = new Claimer(prizePool, MINIMUM_FEE, MAXIMUM_FEE, TIME_TO_REACH_MAX, ud2x18(0.5e18));
+        claimer = new Claimer(prizePool, MINIMUM_FEE, MAXIMUM_FEE, TIME_TO_REACH_MAX, ud2x18(MAX_FEE_PERCENTAGE_OF_PRIZE));
         decayConstant = LinearVRGDALib.getDecayConstant(LinearVRGDALib.getMaximumPriceDeltaScale(MINIMUM_FEE, MAXIMUM_FEE, TIME_TO_REACH_MAX));
         ahead1_fee = LinearVRGDALib.getVRGDAPrice(MINIMUM_FEE, 0, 1, LinearVRGDALib.getPerTimeUnit(ESTIMATED_PRIZES, TIME_TO_REACH_MAX), decayConstant);
     }
@@ -99,6 +100,25 @@ contract ClaimerTest is Test {
         assertEq(totalFees, 0.5e18, "Total fees");
     }
 
+    function testClaimPrizes_invalidDrawId() public {
+        Claim[] memory claims = new Claim[](1);
+        claims[0] = Claim({
+            vault: vault,
+            winner: winner1,
+            tier: 1
+        });
+        mockPrizePool(2, -1, 0);
+        mockLastCompletedDrawStartedAt(-80000); // much time has passed, meaning the fee is large
+        mockClaimPrize(claims[0].winner, 1, claims[0].winner, uint96(0.5e18), address(this), 100);
+        vm.expectRevert(Claimer.DrawInvalid.selector);
+        claimer.claimPrizes(1, claims, address(this));
+    }
+
+    function testComputeMaxFee() public {
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.calculatePrizeSize.selector, 1), abi.encodePacked(SMALLEST_PRIZE_SIZE));
+        assertEq(claimer.computeMaxFee(), 0.5e18);
+    }
+
     function mockPrizePool(
         uint256 drawId,
         int256 drawEndedRelativeToNow,
@@ -108,7 +128,7 @@ contract ClaimerTest is Test {
         vm.mockCall(address(prizePool), abi.encodeWithSignature("estimatedPrizeCount()"), abi.encodePacked(ESTIMATED_PRIZES));
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.drawPeriodSeconds.selector), abi.encodePacked(TIME_TO_REACH_MAX));
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.numberOfTiers.selector), abi.encodePacked(uint256(2)));
-        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.calculatePrizeSize.selector, 1), abi.encodePacked(SMALLED_PRIZE_SIZE));
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.calculatePrizeSize.selector, 1), abi.encodePacked(SMALLEST_PRIZE_SIZE));
         mockLastCompletedDrawStartedAt(drawEndedRelativeToNow);
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.claimCount.selector), abi.encodePacked(claimCount));
     }
