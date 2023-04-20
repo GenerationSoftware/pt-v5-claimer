@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
+// import "forge-std/console2.sol";
+
 import { SD59x18 } from "prb-math/SD59x18.sol";
 import { UD2x18 } from "prb-math/UD2x18.sol";
 import { UD60x18 } from "prb-math/UD60x18.sol";
@@ -23,56 +25,56 @@ contract Claimer is Multicall {
     PrizePool public immutable prizePool;
     UD2x18 public immutable maxFeePortionOfPrize;
     SD59x18 public immutable decayConstant;
-    uint256 public immutable targetPrice;
-    uint256 public immutable drawPeriodSeconds;
+    uint256 public immutable minimumFee;
 
     constructor(
         PrizePool _prizePool,
-        UD2x18 _priceDeltaScale,
-        uint256 _targetPrice,
+        uint256 _minimumFee,
+        uint256 _maximumFee,
+        uint256 _timeToReachMaxFee,
         UD2x18 _maxFeePortionOfPrize
     ) {
         prizePool = _prizePool;
         maxFeePortionOfPrize = _maxFeePortionOfPrize;
-        decayConstant = LinearVRGDALib.getDecayConstant(_priceDeltaScale);
-        targetPrice = _targetPrice;
-        drawPeriodSeconds = prizePool.drawPeriodSeconds();
+        decayConstant = LinearVRGDALib.getDecayConstant(LinearVRGDALib.getMaximumPriceDeltaScale(_minimumFee, _maximumFee, _timeToReachMaxFee));
+        minimumFee = _minimumFee;
     }
 
     function claimPrizes(
         uint256 drawId,
         Claim[] calldata _claims,
         address _feeRecipient
-    ) external returns (uint256) {
-        // first ensure that the draw hasn't changed. If this tx was mined after the draw has changed, then we can't claim anything.
-        if (prizePool.lastCompletedDrawId() != drawId) {
-            revert DrawInvalid();
-        }
-
-        // cache loads
-        // uint256 targetPrice_ = targetPrice;
-        // SD59x18 decayConstant_ = decayConstant;
-
+    ) external returns (uint256 claimCount, uint256 totalFees) {
+        // console2.log("STARTING....");
+        
         // The below values can change if the draw changes, so we'll cache them then add a protection below to ensure draw id is the same
+        uint256 drawPeriodSeconds = prizePool.drawPeriodSeconds();
+        // console2.log("estimatedPrizeCount", prizePool.estimatedPrizeCount());
         SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), drawPeriodSeconds);
         uint256 elapsed = block.timestamp - (prizePool.lastCompletedDrawStartedAt() + drawPeriodSeconds);
+        // console2.log("elapsed", elapsed);
 
         // compute the maximum fee based on the smallest prize size.
         uint256 maxFee = _computeMaxFee();
 
-        uint256 claimCount;
+        // console2.log("maxFee", maxFee);
+
         for (uint i = 0; i < _claims.length; i++) {
             // ensure that the vault didn't complete the draw
             if (prizePool.lastCompletedDrawId() != drawId) {
                 revert DrawInvalid();
             }
-            uint256 fee = _computeFeeForNextClaim(targetPrice, decayConstant, perTimeUnit, elapsed, prizePool.claimCount(), maxFee);
-            if (_claims[i].vault.claimPrize(_claims[i].winner, _claims[i].tier, _claims[i].winner, uint96(fee > maxFee ? maxFee : fee), _feeRecipient) > 0) {
+            uint256 fee = _computeFeeForNextClaim(minimumFee, decayConstant, perTimeUnit, elapsed, prizePool.claimCount() + i, maxFee);
+            // console2.log("fee", fee);
+            // console2.log("winner", _claims[i].winner);
+            // console2.log("tier", _claims[i].tier);
+            // console2.log("recipient", _claims[i].winner);
+            // console2.log("_feeRecipient", _feeRecipient);
+            if (_claims[i].vault.claimPrize(_claims[i].winner, _claims[i].tier, _claims[i].winner, uint96(fee), _feeRecipient) > 0) {
                 claimCount++;
+                totalFees += fee;
             }
         }
-
-        return claimCount;
     }
 
     function computeMaxFee() external returns (uint256) {
@@ -85,30 +87,15 @@ contract Claimer is Multicall {
         return UD60x18.unwrap(maxFeePortionOfPrize.intoUD60x18().mul(UD60x18.wrap(prize)));
     }
 
-    function computeFees(uint256 _claimCount) external returns (uint256) {
-        uint256 targetPrice_ = targetPrice;
-        SD59x18 decayConstant_ = decayConstant;
-        uint256 drawPeriodSeconds = prizePool.drawPeriodSeconds();
-        SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), drawPeriodSeconds);
-        uint256 elapsed = block.timestamp - (prizePool.lastCompletedDrawStartedAt() + drawPeriodSeconds);
-        uint maxFee = _computeMaxFee();
-        uint sold = prizePool.claimCount();
-        uint fees;
-        for (uint i = 0; i <= _claimCount; i++) {
-            fees += _computeFeeForNextClaim(targetPrice_, decayConstant_, perTimeUnit, elapsed, sold + i, maxFee);
-        }
-        return fees;
-    }
-
     function _computeFeeForNextClaim(
-        uint256 _targetPrice,
+        uint256 _minimumFee,
         SD59x18 _decayConstant,
         SD59x18 _perTimeUnit,
         uint256 _elapsed,
         uint256 _sold,
         uint256 _maxFee
     ) internal returns (uint256) {
-        uint256 fee = LinearVRGDALib.getVRGDAPrice(_targetPrice, _elapsed, _sold + 1, _perTimeUnit, _decayConstant);
+        uint256 fee = LinearVRGDALib.getVRGDAPrice(_minimumFee, _elapsed, _sold, _perTimeUnit, _decayConstant);
         return fee > _maxFee ? _maxFee : fee;
     }
 

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
-import { UD2x18 } from "prb-math/UD2x18.sol";
+import { UD2x18, ud2x18} from "prb-math/UD2x18.sol";
 import { SD59x18, toSD59x18, E } from "prb-math/SD59x18.sol";
-import {wadExp, wadLn, wadMul, unsafeWadMul, toWadUnsafe, unsafeWadDiv} from "solmate/utils/SignedWadMath.sol";
+import {wadExp, wadLn, wadMul, unsafeWadMul, toWadUnsafe, unsafeWadDiv, wadDiv} from "solmate/utils/SignedWadMath.sol";
 
 /// @title Linear Variable Rate Gradual Dutch Auction
 /// @author Brendan Asselstine <brendan@pooltogether.com>
@@ -31,5 +31,17 @@ library LinearVRGDALib {
                 wadMul(int256(_targetPrice*1e18), wadExp(unsafeWadMul(_decayConstant.unwrap(), targetTime)
             ))) / 1e18;
         }
+    }
+
+    /// @notice Computes the fee delta so that the min fee will reach the max fee in the given time
+    /// @param _minFee The fee at the start
+    /// @param _maxFee The fee after the time has elapsed
+    /// @param _time The elapsed time to reach _maxFee
+    /// @return The 
+    function getMaximumPriceDeltaScale(uint256 _minFee, uint256 _maxFee, uint256 _time) internal pure returns (UD2x18) {
+        int256 div = wadDiv(int256(_maxFee), int256(_minFee));
+        int256 ln = wadLn(div);
+        int256 maxDiv = wadDiv(ln, int256(_time));
+        return ud2x18(uint64(uint256(wadExp(maxDiv/1e18))));
     }
 }

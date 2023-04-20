@@ -42,4 +42,24 @@ contract LinearVRGDALibTest is Test {
         assertEq(wrapper.getVRGDAPrice(0.0001e18, 11, 20, perTimeUnit, decayConstant), 0.000038554328942953e18);
     }
 
+    function testGetMaximumPriceDeltaScale() public {
+        uint256 maxPrice = 0.03e18;
+        uint256 targetPrice = 0.0001e18;
+        uint256 maxTime = 86400;
+        // maximum number of prizes is 4^15 = 1073741824
+        // one day is 86400 seconds
+        UD2x18 maxPriceDeltaScale = wrapper.getMaximumPriceDeltaScale(maxPrice, targetPrice, maxTime);
+        console2.log("maxPriceDeltaScale", maxPriceDeltaScale.unwrap());
+
+        uint256 price = wrapper.getVRGDAPrice(
+            uint256(targetPrice),
+            uint256(maxTime),
+            0,
+            wrapper.getPerTimeUnit(1,1),
+            wrapper.getDecayConstant(maxPriceDeltaScale)
+        );
+
+        assertApproxEqAbs(price, uint256(maxPrice), 0.00001e18);
+    }
+
 }
