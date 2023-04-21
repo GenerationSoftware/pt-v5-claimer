@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-// import "forge-std/console2.sol";
-
 import { SD59x18 } from "prb-math/SD59x18.sol";
 import { UD2x18 } from "prb-math/UD2x18.sol";
 import { UD60x18 } from "prb-math/UD60x18.sol";
@@ -68,32 +66,27 @@ contract Claimer is Multicall {
         Claim[] calldata _claims,
         address _feeRecipient
     ) external returns (uint256 claimCount, uint256 totalFees) {
-        // console2.log("STARTING....");
-        
-        // The below values can change if the draw changes, so we'll cache them then add a protection below to ensure draw id is the same
-        uint256 drawPeriodSeconds = prizePool.drawPeriodSeconds();
-        // console2.log("estimatedPrizeCount", prizePool.estimatedPrizeCount());
-        SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), drawPeriodSeconds);
-        uint256 elapsed = block.timestamp - (prizePool.lastCompletedDrawStartedAt() + drawPeriodSeconds);
-        // console2.log("elapsed", elapsed);
+
+        SD59x18 perTimeUnit;
+        uint256 elapsed;
+        {
+            // The below values can change if the draw changes, so we'll cache them then add a protection below to ensure draw id is the same
+            uint256 drawPeriodSeconds = prizePool.drawPeriodSeconds();
+            perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), drawPeriodSeconds);
+            elapsed = block.timestamp - (prizePool.lastCompletedDrawStartedAt() + drawPeriodSeconds);
+        }
 
         // compute the maximum fee based on the smallest prize size.
         uint256 maxFee = _computeMaxFee();
 
-        // console2.log("maxFee", maxFee);
-
         for (uint i = 0; i < _claims.length; i++) {
+            Claim memory claim = _claims[i];
             // ensure that the vault didn't complete the draw
             if (prizePool.lastCompletedDrawId() != drawId) {
                 revert DrawInvalid();
             }
             uint256 fee = _computeFeeForNextClaim(minimumFee, decayConstant, perTimeUnit, elapsed, prizePool.claimCount() + i, maxFee);
-            // console2.log("fee", fee);
-            // console2.log("winner", _claims[i].winner);
-            // console2.log("tier", _claims[i].tier);
-            // console2.log("recipient", _claims[i].winner);
-            // console2.log("_feeRecipient", _feeRecipient);
-            if (_claims[i].vault.claimPrize(_claims[i].winner, _claims[i].tier, _claims[i].winner, uint96(fee), _feeRecipient) > 0) {
+            if (claim.vault.claimPrize(claim.winner, claim.tier, claim.winner, uint96(fee), _feeRecipient) > 0) {
                 claimCount++;
                 totalFees += fee;
             }
