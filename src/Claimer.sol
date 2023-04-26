@@ -82,7 +82,7 @@ contract Claimer is Multicall {
         for (uint i = 0; i < _claims.length; i++) {
             Claim memory claim = _claims[i];
             // ensure that the vault didn't complete the draw
-            if (prizePool.lastCompletedDrawId() != drawId) {
+            if (prizePool.getLastCompletedDrawId() != drawId) {
                 revert DrawInvalid();
             }
             uint256 fee = _computeFeeForNextClaim(minimumFee, decayConstant, perTimeUnit, elapsed, prizePool.claimCount() + i, maxFee);
@@ -95,13 +95,13 @@ contract Claimer is Multicall {
 
     /// @notice Computes the maximum fee that can be charged
     /// @return The maximum fee that can be charged
-    function computeMaxFee() external returns (uint256) {
+    function computeMaxFee() external view returns (uint256) {
         return _computeMaxFee();
     }
 
     /// @notice Computes the maximum fee that can be charged
     /// @return The maximum fee that can be charged
-    function _computeMaxFee() internal returns (uint256) {
+    function _computeMaxFee() internal view returns (uint256) {
         // compute the maximum fee that can be charged
         uint256 prize = prizePool.calculatePrizeSize(prizePool.numberOfTiers() - 1);
         return UD60x18.unwrap(maxFeePortionOfPrize.intoUD60x18().mul(UD60x18.wrap(prize)));
@@ -122,7 +122,7 @@ contract Claimer is Multicall {
         uint256 _elapsed,
         uint256 _sold,
         uint256 _maxFee
-    ) internal returns (uint256) {
+    ) internal pure returns (uint256) {
         uint256 fee = LinearVRGDALib.getVRGDAPrice(_minimumFee, _elapsed, _sold, _perTimeUnit, _decayConstant);
         return fee > _maxFee ? _maxFee : fee;
     }
