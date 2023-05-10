@@ -103,7 +103,7 @@ contract Claimer is Multicall {
     /// @return The maximum fee that can be charged
     function _computeMaxFee() internal view returns (uint256) {
         // compute the maximum fee that can be charged
-        uint256 prize = prizePool.calculatePrizeSize(prizePool.numberOfTiers() - 1);
+        uint256 prize = prizePool.calculatePrizeSize(prizePool.numberOfTiers());
         return UD60x18.unwrap(maxFeePortionOfPrize.intoUD60x18().mul(UD60x18.wrap(prize)));
     }
 

@@ -49,7 +49,6 @@ contract LinearVRGDALibTest is Test {
         // maximum number of prizes is 4^15 = 1073741824
         // one day is 86400 seconds
         UD2x18 maxPriceDeltaScale = wrapper.getMaximumPriceDeltaScale(maxPrice, targetPrice, maxTime);
-        console2.log("maxPriceDeltaScale", maxPriceDeltaScale.unwrap());
 
         uint256 price = wrapper.getVRGDAPrice(
             uint256(targetPrice),

@@ -45,7 +45,7 @@ contract ClaimerTest is Test {
     }
 
     function testConstructor() public {
-        console2.log("??????? decayConstant", decayConstant.unwrap());
+        // console2.log("??????? decayConstant", decayConstant.unwrap());
         assertEq(address(claimer.prizePool()), address(prizePool));
         assertEq(claimer.minimumFee(), MINIMUM_FEE);
         assertEq(claimer.decayConstant().unwrap(), decayConstant.unwrap());
@@ -115,7 +115,7 @@ contract ClaimerTest is Test {
     }
 
     function testComputeMaxFee() public {
-        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.calculatePrizeSize.selector, 1), abi.encodePacked(SMALLEST_PRIZE_SIZE));
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.calculatePrizeSize.selector, 2), abi.encodePacked(SMALLEST_PRIZE_SIZE));
         assertEq(claimer.computeMaxFee(), 0.5e18);
     }
 
@@ -124,11 +124,12 @@ contract ClaimerTest is Test {
         int256 drawEndedRelativeToNow,
         uint256 claimCount
     ) public {
-        vm.mockCall(address(prizePool), abi.encodeWithSignature("lastCompletedDrawId()"), abi.encodePacked(drawId));
+        uint numberOfTiers = 2;
+        vm.mockCall(address(prizePool), abi.encodeWithSignature("getLastCompletedDrawId()"), abi.encodePacked(drawId));
         vm.mockCall(address(prizePool), abi.encodeWithSignature("estimatedPrizeCount()"), abi.encodePacked(ESTIMATED_PRIZES));
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.drawPeriodSeconds.selector), abi.encodePacked(TIME_TO_REACH_MAX));
-        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.numberOfTiers.selector), abi.encodePacked(uint256(2)));
-        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.calculatePrizeSize.selector, 1), abi.encodePacked(SMALLEST_PRIZE_SIZE));
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.numberOfTiers.selector), abi.encodePacked(numberOfTiers));
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.calculatePrizeSize.selector, numberOfTiers), abi.encodePacked(SMALLEST_PRIZE_SIZE));
         mockLastCompletedDrawStartedAt(drawEndedRelativeToNow);
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.claimCount.selector), abi.encodePacked(claimCount));
     }
