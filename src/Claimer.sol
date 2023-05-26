@@ -93,6 +93,21 @@ contract Claimer is Multicall {
         }
     }
 
+    /// @notice Computes the total fees for the given number of claims
+    /// @param _claimCount The number of claims
+    /// @return The total fees for those claims
+    function computeTotalFees(uint _claimCount) external view returns (uint256) {
+        uint256 drawPeriodSeconds = prizePool.drawPeriodSeconds();
+        SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), drawPeriodSeconds);
+        uint256 elapsed = block.timestamp - (prizePool.lastCompletedDrawStartedAt() + drawPeriodSeconds);
+        uint256 maxFee = _computeMaxFee();
+        uint256 fee;
+        for (uint i = 0; i < _claimCount; i++) {
+            fee += _computeFeeForNextClaim(minimumFee, decayConstant, perTimeUnit, elapsed, prizePool.claimCount() + i, maxFee);
+        }
+        return fee;
+    }
+
     /// @notice Computes the maximum fee that can be charged
     /// @return The maximum fee that can be charged
     function computeMaxFee() external view returns (uint256) {

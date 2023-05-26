@@ -45,7 +45,6 @@ contract ClaimerTest is Test {
     }
 
     function testConstructor() public {
-        // console2.log("??????? decayConstant", decayConstant.unwrap());
         assertEq(address(claimer.prizePool()), address(prizePool));
         assertEq(claimer.minimumFee(), MINIMUM_FEE);
         assertEq(claimer.decayConstant().unwrap(), decayConstant.unwrap());
@@ -112,6 +111,21 @@ contract ClaimerTest is Test {
         mockClaimPrize(claims[0].winner, 1, claims[0].winner, uint96(0.5e18), address(this), 100);
         vm.expectRevert(Claimer.DrawInvalid.selector);
         claimer.claimPrizes(1, claims, address(this));
+    }
+
+    function testComputeTotalFees_zero() public {
+        mockPrizePool(1, -100, 0);
+        assertEq(claimer.computeTotalFees(0), 0);
+    }
+
+    function testComputeTotalFees_one() public {
+        mockPrizePool(1, -100, 0);
+        assertEq(claimer.computeTotalFees(1), UNSOLD_100_SECONDS_IN_FEE);
+    }
+
+    function testComputeTotalFees_two() public {
+        mockPrizePool(1, -100, 0);
+        assertEq(claimer.computeTotalFees(2), UNSOLD_100_SECONDS_IN_FEE + SOLD_ONE_100_SECONDS_IN_FEE);
     }
 
     function testComputeMaxFee() public {
