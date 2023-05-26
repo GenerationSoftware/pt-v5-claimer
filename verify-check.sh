@@ -1,0 +1,1 @@
+forge verify-check --verifier etherscan --chain $CHAIN --etherscan-api-key $ETHERSCAN_API_KEY $1

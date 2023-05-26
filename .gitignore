@@ -12,9 +12,11 @@ docs/
 
 # Dotenv file
 .env
+.envrc
 
 # VSCode
 .history
 
 # Coverage
 lcov.info
+
