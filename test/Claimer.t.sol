@@ -99,6 +99,21 @@ contract ClaimerTest is Test {
         assertEq(totalFees, 0.5e18, "Total fees");
     }
 
+    function testClaimPrizes_veryLongElapsedTime() public {
+        Claim[] memory claims = new Claim[](1);
+        claims[0] = Claim({
+            vault: vault,
+            winner: winner1,
+            tier: 1
+        });
+        mockPrizePool(1, -1, 0);
+        mockLastCompletedDrawStartedAt(-1_000_000); // a long time has passed, meaning the fee should be capped (and there should be no EXP_OVERFLOW!)
+        mockClaimPrize(claims[0].winner, 1, claims[0].winner, uint96(0.5e18), address(this), 100);
+        (uint256 claimCount, uint256 totalFees) = claimer.claimPrizes(1, claims, address(this));
+        assertEq(claimCount, 1, "Number of prizes claimed");
+        assertEq(totalFees, 0.5e18, "Total fees");
+    }
+
     function testClaimPrizes_invalidDrawId() public {
         Claim[] memory claims = new Claim[](1);
         claims[0] = Claim({
