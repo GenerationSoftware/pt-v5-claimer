@@ -33,10 +33,11 @@ library LinearVRGDALib {
     function getVRGDAPrice(uint256 _targetPrice, uint256 _timeSinceStart, uint256 _sold, SD59x18 _perTimeUnit, SD59x18 _decayConstant) internal pure returns (uint256) {
         int256 targetTime = toSD59x18(int256(_timeSinceStart)).sub(toSD59x18(int256(_sold+1)).div(_perTimeUnit)).unwrap();
         unchecked {
+            int256 exp = unsafeWadMul(_decayConstant.unwrap(), targetTime);
+            // Compute exponent and check if it is at the max for the `wadExp(exp)` function. If so, limit at max int.
+            if(exp >= 135305999368893231589) return uint256(type(int256).max);
             // prettier-ignore
-            return uint256(
-                wadMul(int256(_targetPrice*1e18), wadExp(unsafeWadMul(_decayConstant.unwrap(), targetTime)
-            ))) / 1e18;
+            return uint256(wadMul(int256(_targetPrice*1e18), wadExp(exp))) / 1e18;
         }
     }
 
