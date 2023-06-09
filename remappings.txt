@@ -6,5 +6,4 @@ src/=src/
 test/=test/
 v5-prize-pool/=lib/v5-prize-pool/src/
 v5-twab-controller/=lib/v5-prize-pool/lib/v5-twab-controller/src/
-v5-prize-pool/=lib/v5-prize-pool/src/
 openzeppelin/=lib/openzeppelin-contracts/contracts/

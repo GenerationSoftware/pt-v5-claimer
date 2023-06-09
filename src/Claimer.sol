@@ -86,7 +86,7 @@ contract Claimer is Multicall {
                 revert DrawInvalid();
             }
             uint256 fee = _computeFeeForNextClaim(minimumFee, decayConstant, perTimeUnit, elapsed, prizePool.claimCount() + i, maxFee);
-            if (claim.vault.claimPrize(claim.winner, claim.tier, claim.winner, uint96(fee), _feeRecipient) > 0) {
+            if (claim.vault.claimPrize(claim.winner, claim.tier, uint96(fee), _feeRecipient) > 0) {
                 claimCount++;
                 totalFees += fee;
             }
