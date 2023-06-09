@@ -58,7 +58,7 @@ contract ClaimerTest is Test {
             tier: 1
         });
         mockPrizePool(1, -100, 0);
-        mockClaimPrize(claims[0].winner, 1, claims[0].winner, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 100);
+        mockClaimPrize(claims[0].winner, 1, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 100);
         (uint256 claimCount, uint256 totalFees) = claimer.claimPrizes(1, claims, address(this));
         assertEq(claimCount, 1, "Number of prizes claimed");
         assertEq(totalFees, UNSOLD_100_SECONDS_IN_FEE, "Total fees");
@@ -77,8 +77,8 @@ contract ClaimerTest is Test {
             tier: 1
         });
         mockPrizePool(1, -100, 0);
-        mockClaimPrize(claims[0].winner, 1, claims[0].winner, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 100);
-        mockClaimPrize(claims[1].winner, 1, claims[1].winner, uint96(SOLD_ONE_100_SECONDS_IN_FEE), address(this), 100);
+        mockClaimPrize(claims[0].winner, 1, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 100);
+        mockClaimPrize(claims[1].winner, 1, uint96(SOLD_ONE_100_SECONDS_IN_FEE), address(this), 100);
         (uint256 claimCount, uint256 totalFees) = claimer.claimPrizes(1, claims, address(this));
         assertEq(claimCount, 2, "Number of prizes claimed");
         assertEq(totalFees, UNSOLD_100_SECONDS_IN_FEE + SOLD_ONE_100_SECONDS_IN_FEE, "Total fees");
@@ -93,7 +93,7 @@ contract ClaimerTest is Test {
         });
         mockPrizePool(1, -1, 0);
         mockLastCompletedDrawStartedAt(-80000); // much time has passed, meaning the fee is large
-        mockClaimPrize(claims[0].winner, 1, claims[0].winner, uint96(0.5e18), address(this), 100);
+        mockClaimPrize(claims[0].winner, 1, uint96(0.5e18), address(this), 100);
         (uint256 claimCount, uint256 totalFees) = claimer.claimPrizes(1, claims, address(this));
         assertEq(claimCount, 1, "Number of prizes claimed");
         assertEq(totalFees, 0.5e18, "Total fees");
@@ -108,7 +108,7 @@ contract ClaimerTest is Test {
         });
         mockPrizePool(1, -1, 0);
         mockLastCompletedDrawStartedAt(-1_000_000); // a long time has passed, meaning the fee should be capped (and there should be no EXP_OVERFLOW!)
-        mockClaimPrize(claims[0].winner, 1, claims[0].winner, uint96(0.5e18), address(this), 100);
+        mockClaimPrize(claims[0].winner, 1, uint96(0.5e18), address(this), 100);
         (uint256 claimCount, uint256 totalFees) = claimer.claimPrizes(1, claims, address(this));
         assertEq(claimCount, 1, "Number of prizes claimed");
         assertEq(totalFees, 0.5e18, "Total fees");
@@ -123,7 +123,7 @@ contract ClaimerTest is Test {
         });
         mockPrizePool(2, -1, 0);
         mockLastCompletedDrawStartedAt(-80000); // much time has passed, meaning the fee is large
-        mockClaimPrize(claims[0].winner, 1, claims[0].winner, uint96(0.5e18), address(this), 100);
+        mockClaimPrize(claims[0].winner, 1, uint96(0.5e18), address(this), 100);
         vm.expectRevert(Claimer.DrawInvalid.selector);
         claimer.claimPrizes(1, claims, address(this));
     }
@@ -174,12 +174,11 @@ contract ClaimerTest is Test {
     function mockClaimPrize(
         address _winner,
         uint8 _tier,
-        address _to,
         uint96 _fee,
         address _feeRecipient,
         uint256 _result
     ) public {
-        vm.mockCall(address(vault), abi.encodeWithSelector(vault.claimPrize.selector, _winner, _tier, _to, _fee, _feeRecipient), abi.encodePacked(_result));
+        vm.mockCall(address(vault), abi.encodeWithSelector(vault.claimPrize.selector, _winner, _tier, _fee, _feeRecipient), abi.encodePacked(_result));
     }
 
 }
