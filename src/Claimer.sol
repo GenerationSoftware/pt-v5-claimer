@@ -66,14 +66,13 @@ contract Claimer is Multicall {
         Claim[] calldata _claims,
         address _feeRecipient
     ) external returns (uint256 claimCount, uint256 totalFees) {
-
         SD59x18 perTimeUnit;
         uint256 elapsed;
+
         {
             // The below values can change if the draw changes, so we'll cache them then add a protection below to ensure draw id is the same
-            uint256 drawPeriodSeconds = prizePool.drawPeriodSeconds();
-            perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), drawPeriodSeconds);
-            elapsed = block.timestamp - (prizePool.lastCompletedDrawStartedAt() + drawPeriodSeconds);
+            perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), prizePool.drawPeriodSeconds());
+            elapsed = block.timestamp - prizePool.lastCompletedDrawAwardedAt();
         }
 
         // compute the maximum fee based on the smallest prize size.
@@ -81,11 +80,14 @@ contract Claimer is Multicall {
 
         for (uint i = 0; i < _claims.length; i++) {
             Claim memory claim = _claims[i];
+
             // ensure that the vault didn't complete the draw
             if (prizePool.getLastCompletedDrawId() != drawId) {
                 revert DrawInvalid();
             }
+
             uint256 fee = _computeFeeForNextClaim(minimumFee, decayConstant, perTimeUnit, elapsed, prizePool.claimCount() + i, maxFee);
+
             if (claim.vault.claimPrize(claim.winner, claim.tier, uint96(fee), _feeRecipient) > 0) {
                 claimCount++;
                 totalFees += fee;
@@ -97,14 +99,15 @@ contract Claimer is Multicall {
     /// @param _claimCount The number of claims
     /// @return The total fees for those claims
     function computeTotalFees(uint _claimCount) external view returns (uint256) {
-        uint256 drawPeriodSeconds = prizePool.drawPeriodSeconds();
-        SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), drawPeriodSeconds);
-        uint256 elapsed = block.timestamp - (prizePool.lastCompletedDrawStartedAt() + drawPeriodSeconds);
+        SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), prizePool.drawPeriodSeconds());
+        uint256 elapsed = block.timestamp - prizePool.lastCompletedDrawAwardedAt();
         uint256 maxFee = _computeMaxFee();
         uint256 fee;
+
         for (uint i = 0; i < _claimCount; i++) {
             fee += _computeFeeForNextClaim(minimumFee, decayConstant, perTimeUnit, elapsed, prizePool.claimCount() + i, maxFee);
         }
+
         return fee;
     }
 
