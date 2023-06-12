@@ -8,21 +8,12 @@ import { PrizePool } from "v5-prize-pool/PrizePool.sol";
 import { Multicall } from "openzeppelin/utils/Multicall.sol";
 
 import { LinearVRGDALib } from "./lib/LinearVRGDALib.sol";
-import { IVault } from "./interfaces/IVault.sol";
-
-struct Claim {
-    IVault vault;
-    address winner;
-    uint8 tier;
-}
+import { Vault } from "v5-vault/Vault.sol";
 
 /// @title Variable Rate Gradual Dutch Auction (VRGDA) Claimer
 /// @author PoolTogether Inc. Team
 /// @notice This contract uses a variable rate gradual dutch auction to inventivize prize claims on behalf of others
 contract Claimer is Multicall {
-
-    /// @notice Emitted when the passed draw id does not match the Prize Pool's completed draw id
-    error DrawInvalid();
 
     /// @notice The Prize Pool that this Claimer is claiming prizes for
     PrizePool public immutable prizePool;
@@ -56,43 +47,27 @@ contract Claimer is Multicall {
     }
 
     /// @notice Allows the call to claim prizes on behalf of others.
-    /// @param drawId The draw id to claim prizes for
-    /// @param _claims The prize claims
     /// @param _feeRecipient The address to receive the claim fees
-    /// @return claimCount The number of successful claims
     /// @return totalFees The total fees collected across all successful claims
     function claimPrizes(
-        uint256 drawId,
-        Claim[] calldata _claims,
+        Vault vault,
+        uint8 tier,
+        address[] calldata winners,
+        uint32[][] calldata prizeIndices,
         address _feeRecipient
-    ) external returns (uint256 claimCount, uint256 totalFees) {
-        SD59x18 perTimeUnit;
-        uint256 elapsed;
+    ) external returns (uint256 totalFees) {
 
-        {
-            // The below values can change if the draw changes, so we'll cache them then add a protection below to ensure draw id is the same
-            perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), prizePool.drawPeriodSeconds());
-            elapsed = block.timestamp - prizePool.lastCompletedDrawAwardedAt();
+        uint256 claimCount;
+        for (uint i = 0; i < winners.length; i++) {
+            claimCount += prizeIndices[i].length;
         }
 
         // compute the maximum fee based on the smallest prize size.
-        uint256 maxFee = _computeMaxFee();
+        uint256 feePerClaim = _computeTotalFees(claimCount) / claimCount;
 
-        for (uint i = 0; i < _claims.length; i++) {
-            Claim memory claim = _claims[i];
+        vault.claimPrizes(tier, winners, prizeIndices, feePerClaim, _feeRecipient);
 
-            // ensure that the vault didn't complete the draw
-            if (prizePool.getLastCompletedDrawId() != drawId) {
-                revert DrawInvalid();
-            }
-
-            uint256 fee = _computeFeeForNextClaim(minimumFee, decayConstant, perTimeUnit, elapsed, prizePool.claimCount() + i, maxFee);
-
-            if (claim.vault.claimPrize(claim.winner, claim.tier, uint96(fee), _feeRecipient) > 0) {
-                claimCount++;
-                totalFees += fee;
-            }
-        }
+        return feePerClaim * claimCount;
     }
 
     /// @notice Computes the total fees for the given number of claims
@@ -108,7 +83,7 @@ contract Claimer is Multicall {
             fee += _computeFeeForNextClaim(minimumFee, decayConstant, perTimeUnit, elapsed, prizePool.claimCount() + i, maxFee);
         }
 
-        return fee;
+        return (fee / _claimCount) * _claimCount; // round it out to match claimPrizes()
     }
 
     /// @notice Computes the maximum fee that can be charged

@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 
-import { Claimer, Claim } from "src/Claimer.sol";
+import { Claimer } from "src/Claimer.sol";
 import { UD2x18, ud2x18 } from "prb-math/UD2x18.sol";
 import { SD59x18 } from "prb-math/SD59x18.sol";
 
@@ -51,86 +51,45 @@ contract ClaimerTest is Test {
     }
 
     function testClaimPrizes_single() public {
-        Claim[] memory claims = new Claim[](1);
-        claims[0] = Claim({
-            vault: vault,
-            winner: winner1,
-            tier: 1
-        });
+        address[] memory winners = [winner1];
+        uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
         mockPrizePool(1, -100, 0);
-        mockClaimPrize(claims[0].winner, 1, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 100);
-        (uint256 claimCount, uint256 totalFees) = claimer.claimPrizes(1, claims, address(this));
+        mockClaimPrizes(1, winners, prizeIndices, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 100);
+        (uint256 claimCount, uint256 totalFees) = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this));
         assertEq(claimCount, 1, "Number of prizes claimed");
         assertEq(totalFees, UNSOLD_100_SECONDS_IN_FEE, "Total fees");
     }
 
     function testClaimPrizes_multiple() public {
-        Claim[] memory claims = new Claim[](2);
-
-        claims[0] = Claim({
-            vault: vault,
-            winner: winner1,
-            tier: 1
-        });
-
-        claims[1] = Claim({
-            vault: vault,
-            winner: winner2,
-            tier: 1
-        });
-
+        address[] memory winners = [winner1, winner2];
+        uint32[][] memory prizeIndices = newPrizeIndices(2, 1);
         mockPrizePool(1, -100, 0);
-        mockClaimPrize(claims[0].winner, 1, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 100);
-        mockClaimPrize(claims[1].winner, 1, uint96(SOLD_ONE_100_SECONDS_IN_FEE), address(this), 100);
-
-        (uint256 claimCount, uint256 totalFees) = claimer.claimPrizes(1, claims, address(this));
-
+        mockClaimPrizes(1, winners, prizeIndices, (uint96(UNSOLD_100_SECONDS_IN_FEE) + uint96(SOLD_ONE_100_SECONDS_IN_FEE)) / 2, address(this), 100);
+        (uint256 claimCount, uint256 totalFees) = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this));
         assertEq(claimCount, 2, "Number of prizes claimed");
         assertEq(totalFees, UNSOLD_100_SECONDS_IN_FEE + SOLD_ONE_100_SECONDS_IN_FEE, "Total fees");
     }
 
     function testClaimPrizes_maxFee() public {
-        Claim[] memory claims = new Claim[](1);
-        claims[0] = Claim({
-            vault: vault,
-            winner: winner1,
-            tier: 1
-        });
+        address[] memory winners = [winner1];
+        uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
         mockPrizePool(1, -1, 0);
-        mockLastCompletedDrawAwardedAt(-80000); // much time has passed, meaning the fee is large
-        mockClaimPrize(claims[0].winner, 1, uint96(0.5e18), address(this), 100);
-        (uint256 claimCount, uint256 totalFees) = claimer.claimPrizes(1, claims, address(this));
+        mockLastCompletedDrawStartedAt(-80000); // much time has passed, meaning the fee is large
+        mockClaimPrizes(1, winners, prizeIndices, uint96(0.5e18), address(this), 100);
+        (uint256 claimCount, uint256 totalFees) = claimer.claimPrizes(1, winners, prizeIndices, address(this));
         assertEq(claimCount, 1, "Number of prizes claimed");
         assertEq(totalFees, 0.5e18, "Total fees");
     }
 
     function testClaimPrizes_veryLongElapsedTime() public {
-        Claim[] memory claims = new Claim[](1);
-        claims[0] = Claim({
-            vault: vault,
-            winner: winner1,
-            tier: 1
-        });
+        address[] memory winners = [winner1];
+        uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
         mockPrizePool(1, -1, 0);
-        mockLastCompletedDrawAwardedAt(-1_000_000); // a long time has passed, meaning the fee should be capped (and there should be no EXP_OVERFLOW!)
-        mockClaimPrize(claims[0].winner, 1, uint96(0.5e18), address(this), 100);
-        (uint256 claimCount, uint256 totalFees) = claimer.claimPrizes(1, claims, address(this));
+        mockLastCompletedDrawStartedAt(-1_000_000); // a long time has passed, meaning the fee should be capped (and there should be no EXP_OVERFLOW!)
+        mockClaimPrizes(1, winners, prizeIndices, uint96(0.5e18), address(this), 100);
+        (uint256 claimCount, uint256 totalFees) = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this));
         assertEq(claimCount, 1, "Number of prizes claimed");
         assertEq(totalFees, 0.5e18, "Total fees");
-    }
-
-    function testClaimPrizes_invalidDrawId() public {
-        Claim[] memory claims = new Claim[](1);
-        claims[0] = Claim({
-            vault: vault,
-            winner: winner1,
-            tier: 1
-        });
-        mockPrizePool(2, -1, 0);
-        mockLastCompletedDrawAwardedAt(-80000); // much time has passed, meaning the fee is large
-        mockClaimPrize(claims[0].winner, 1, uint96(0.5e18), address(this), 100);
-        vm.expectRevert(Claimer.DrawInvalid.selector);
-        claimer.claimPrizes(1, claims, address(this));
     }
 
     function testComputeTotalFees_zero() public {
@@ -176,14 +135,29 @@ contract ClaimerTest is Test {
         );
     }
 
-    function mockClaimPrize(
-        address _winner,
+    function newWinners(address winner) public view returns (address[] memory) {
+        address[] memory winners = new address[](1);
+        winners[0] = winner;
+        return winners;
+    }
+
+    function newPrizeIndices(uint32 addressCount, uint32 prizeCount) public view returns (uint32[][] memory) {
+        uint32[][] memory prizeIndices = new uint32[][](addressCount);
+        for (uint256 i = 0; i < addressCount; i++) {
+            prizeIndices[i] = new uint32[](prizeCount);
+        }
+        return prizeIndices;
+    }
+
+    function mockClaimPrizes(
         uint8 _tier,
+        address[] memory _winners,
+        uint32[][] memory _prizeIndices,
         uint96 _fee,
         address _feeRecipient,
         uint256 _result
     ) public {
-        vm.mockCall(address(vault), abi.encodeWithSelector(vault.claimPrize.selector, _winner, _tier, _fee, _feeRecipient), abi.encodePacked(_result));
+        vm.mockCall(address(vault), abi.encodeWithSelector(vault.claimPrizes.selector, _tier, _winners, _prizeIndices, _fee, _feeRecipient), abi.encodePacked(_result));
     }
 
 }
