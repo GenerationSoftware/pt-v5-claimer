@@ -63,7 +63,7 @@ contract Claimer is Multicall {
         }
 
         // compute the maximum fee based on the smallest prize size.
-        uint256 feePerClaim = _computeTotalFees(claimCount) / claimCount;
+        uint96 feePerClaim = uint96(_computeTotalFees(claimCount) / claimCount);
 
         vault.claimPrizes(tier, winners, prizeIndices, feePerClaim, _feeRecipient);
 
@@ -75,7 +75,8 @@ contract Claimer is Multicall {
     /// @return The total fees for those claims
     function computeTotalFees(uint _claimCount) external view returns (uint256) {
         SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), prizePool.drawPeriodSeconds());
-        uint256 elapsed = block.timestamp - prizePool.lastCompletedDrawAwardedAt();
+        uint256 elapsed = block.timestamp - (prizePool.lastCompletedDrawAwardedAt());
+
         uint256 maxFee = _computeMaxFee();
         uint256 fee;
 
