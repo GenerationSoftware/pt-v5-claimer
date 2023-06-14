@@ -47,6 +47,10 @@ contract Claimer is Multicall {
     }
 
     /// @notice Allows the call to claim prizes on behalf of others.
+    /// @param vault The vault to claim from
+    /// @param tier The tier to claim for
+    /// @param winners The array of winners to claim for
+    /// @param prizeIndices The array of prize indices to claim for each winner (length should match winners)
     /// @param _feeRecipient The address to receive the claim fees
     /// @return totalFees The total fees collected across all successful claims
     function claimPrizes(
@@ -62,8 +66,7 @@ contract Claimer is Multicall {
             claimCount += prizeIndices[i].length;
         }
 
-        // compute the maximum fee based on the smallest prize size.
-        uint96 feePerClaim = uint96(_computeTotalFees(claimCount) / claimCount);
+        uint96 feePerClaim = uint96(_computeFeePerClaim(claimCount));
 
         vault.claimPrizes(tier, winners, prizeIndices, feePerClaim, _feeRecipient);
 
@@ -74,17 +77,26 @@ contract Claimer is Multicall {
     /// @param _claimCount The number of claims
     /// @return The total fees for those claims
     function computeTotalFees(uint _claimCount) external view returns (uint256) {
+        return _computeFeePerClaim(_claimCount) * _claimCount;
+    }
+
+    /// @notice Computes the total fees for the given number of claims
+    /// @param _claimCount The number of claims to check
+    /// @return The total fees for the claims
+    function _computeFeePerClaim(uint _claimCount) internal view returns (uint256) {
+        if (_claimCount == 0) {
+            return 0;
+        }
         SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), prizePool.drawPeriodSeconds());
         uint256 elapsed = block.timestamp - (prizePool.lastCompletedDrawAwardedAt());
-
         uint256 maxFee = _computeMaxFee();
         uint256 fee;
 
         for (uint i = 0; i < _claimCount; i++) {
             fee += _computeFeeForNextClaim(minimumFee, decayConstant, perTimeUnit, elapsed, prizePool.claimCount() + i, maxFee);
         }
-
-        return (fee / _claimCount) * _claimCount; // round it out to match claimPrizes()
+        
+        return fee / _claimCount;
     }
 
     /// @notice Computes the maximum fee that can be charged
