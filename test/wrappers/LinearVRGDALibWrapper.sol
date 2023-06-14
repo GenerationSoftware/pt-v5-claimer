@@ -23,12 +23,12 @@ contract LinearVRGDALibWrapper {
         uint256 _sold,
         SD59x18 _perTimeUnit,
         SD59x18 _decayConstant
-    ) external view returns (uint256) {
+    ) external pure returns (uint256) {
         uint256 result = LinearVRGDALib.getVRGDAPrice(_targetPrice, _timeSinceStart, _sold, _perTimeUnit, _decayConstant);
         return result;
     }
 
-    function getMaximumPriceDeltaScale(uint256 targetPrice, uint256 maxPrice, uint256 maxTime) external view returns (UD2x18) {
+    function getMaximumPriceDeltaScale(uint256 targetPrice, uint256 maxPrice, uint256 maxTime) external pure returns (UD2x18) {
         UD2x18 result = LinearVRGDALib.getMaximumPriceDeltaScale(maxPrice, targetPrice, maxTime);
         return result;
     }

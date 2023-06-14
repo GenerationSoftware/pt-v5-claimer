@@ -66,20 +66,25 @@ contract ClaimerTest is Test {
 
     function testClaimPrizes_multiple() public {
         Claim[] memory claims = new Claim[](2);
+
         claims[0] = Claim({
             vault: vault,
             winner: winner1,
             tier: 1
         });
+
         claims[1] = Claim({
             vault: vault,
             winner: winner2,
             tier: 1
         });
+
         mockPrizePool(1, -100, 0);
         mockClaimPrize(claims[0].winner, 1, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 100);
         mockClaimPrize(claims[1].winner, 1, uint96(SOLD_ONE_100_SECONDS_IN_FEE), address(this), 100);
+
         (uint256 claimCount, uint256 totalFees) = claimer.claimPrizes(1, claims, address(this));
+
         assertEq(claimCount, 2, "Number of prizes claimed");
         assertEq(totalFees, UNSOLD_100_SECONDS_IN_FEE + SOLD_ONE_100_SECONDS_IN_FEE, "Total fees");
     }
@@ -92,7 +97,7 @@ contract ClaimerTest is Test {
             tier: 1
         });
         mockPrizePool(1, -1, 0);
-        mockLastCompletedDrawStartedAt(-80000); // much time has passed, meaning the fee is large
+        mockLastCompletedDrawAwardedAt(-80000); // much time has passed, meaning the fee is large
         mockClaimPrize(claims[0].winner, 1, uint96(0.5e18), address(this), 100);
         (uint256 claimCount, uint256 totalFees) = claimer.claimPrizes(1, claims, address(this));
         assertEq(claimCount, 1, "Number of prizes claimed");
@@ -107,7 +112,7 @@ contract ClaimerTest is Test {
             tier: 1
         });
         mockPrizePool(1, -1, 0);
-        mockLastCompletedDrawStartedAt(-1_000_000); // a long time has passed, meaning the fee should be capped (and there should be no EXP_OVERFLOW!)
+        mockLastCompletedDrawAwardedAt(-1_000_000); // a long time has passed, meaning the fee should be capped (and there should be no EXP_OVERFLOW!)
         mockClaimPrize(claims[0].winner, 1, uint96(0.5e18), address(this), 100);
         (uint256 claimCount, uint256 totalFees) = claimer.claimPrizes(1, claims, address(this));
         assertEq(claimCount, 1, "Number of prizes claimed");
@@ -122,7 +127,7 @@ contract ClaimerTest is Test {
             tier: 1
         });
         mockPrizePool(2, -1, 0);
-        mockLastCompletedDrawStartedAt(-80000); // much time has passed, meaning the fee is large
+        mockLastCompletedDrawAwardedAt(-80000); // much time has passed, meaning the fee is large
         mockClaimPrize(claims[0].winner, 1, uint96(0.5e18), address(this), 100);
         vm.expectRevert(Claimer.DrawInvalid.selector);
         claimer.claimPrizes(1, claims, address(this));
@@ -159,15 +164,15 @@ contract ClaimerTest is Test {
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.drawPeriodSeconds.selector), abi.encodePacked(TIME_TO_REACH_MAX));
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.numberOfTiers.selector), abi.encodePacked(numberOfTiers));
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.calculatePrizeSize.selector, numberOfTiers), abi.encodePacked(SMALLEST_PRIZE_SIZE));
-        mockLastCompletedDrawStartedAt(drawEndedRelativeToNow);
+        mockLastCompletedDrawAwardedAt(drawEndedRelativeToNow);
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.claimCount.selector), abi.encodePacked(claimCount));
     }
 
-    function mockLastCompletedDrawStartedAt(int256 drawEndedRelativeToNow) public {
+    function mockLastCompletedDrawAwardedAt(int256 drawEndedRelativeToNow) public {
         vm.mockCall(
             address(prizePool),
-            abi.encodeWithSelector(prizePool.lastCompletedDrawStartedAt.selector),
-            abi.encodePacked(int256(block.timestamp) - int256(TIME_TO_REACH_MAX) + drawEndedRelativeToNow)
+            abi.encodeWithSelector(prizePool.lastCompletedDrawAwardedAt.selector),
+            abi.encodePacked(int256(block.timestamp) + drawEndedRelativeToNow)
         );
     }
 
