@@ -17,6 +17,7 @@ contract ClaimerTest is Test {
     uint256 public constant TIME_TO_REACH_MAX = 86400;
     uint256 public constant ESTIMATED_PRIZES = 1000;
     uint256 public constant SMALLEST_PRIZE_SIZE = 1e18;
+    uint256 public constant CANARY_PRIZE_SIZE = 0.4e18;
     uint256 public constant UNSOLD_100_SECONDS_IN_FEE = 100893106284719;
     uint256 public constant SOLD_ONE_100_SECONDS_IN_FEE = 95351966415391;
     uint64 public constant MAX_FEE_PERCENTAGE_OF_PRIZE = 0.5e18;
@@ -54,7 +55,7 @@ contract ClaimerTest is Test {
     function testClaimPrizes_single() public {
         address[] memory winners = newWinners(winner1);
         uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
-        mockPrizePool(1, -100, 0);
+        mockPrizePool(1, -100, 0, 1);
         mockClaimPrizes(1, winners, prizeIndices, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 100);
         uint256 totalFees = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this));
         assertEq(totalFees, UNSOLD_100_SECONDS_IN_FEE, "Total fees");
@@ -63,7 +64,7 @@ contract ClaimerTest is Test {
     function testClaimPrizes_multiple() public {
         address[] memory winners = newWinners(winner1, winner2);
         uint32[][] memory prizeIndices = newPrizeIndices(2, 1);
-        mockPrizePool(1, -100, 0);
+        mockPrizePool(1, -100, 0, 1);
         mockClaimPrizes(1, winners, prizeIndices, (uint96(UNSOLD_100_SECONDS_IN_FEE) + uint96(SOLD_ONE_100_SECONDS_IN_FEE)) / 2, address(this), 100);
         uint256 totalFees = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this));
         assertEq(totalFees, UNSOLD_100_SECONDS_IN_FEE + SOLD_ONE_100_SECONDS_IN_FEE, "Total fees");
@@ -72,7 +73,7 @@ contract ClaimerTest is Test {
     function testClaimPrizes_maxFee() public {
         address[] memory winners = newWinners(winner1);
         uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
-        mockPrizePool(1, -1, 0);
+        mockPrizePool(1, -1, 0, 1);
         mockLastCompletedDrawAwardedAt(-80000); // much time has passed, meaning the fee is large
         mockClaimPrizes(1, winners, prizeIndices, uint96(0.5e18), address(this), 100);
         uint256 totalFees = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this));
@@ -82,7 +83,7 @@ contract ClaimerTest is Test {
     function testClaimPrizes_veryLongElapsedTime() public {
         address[] memory winners = newWinners(winner1);
         uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
-        mockPrizePool(1, -1, 0);
+        mockPrizePool(1, -1, 0, 1);
         mockLastCompletedDrawAwardedAt(-1_000_000); // a long time has passed, meaning the fee should be capped (and there should be no EXP_OVERFLOW!)
         mockClaimPrizes(1, winners, prizeIndices, uint96(0.5e18), address(this), 100);
         uint256 totalFees = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this));
@@ -90,36 +91,45 @@ contract ClaimerTest is Test {
     }
 
     function testComputeTotalFees_zero() public {
-        mockPrizePool(1, -100, 0);
-        assertEq(claimer.computeTotalFees(0), 0);
+        mockPrizePool(1, -100, 0, 0);
+        assertEq(claimer.computeTotalFees(0, 0), 0);
     }
 
     function testComputeTotalFees_one() public {
-        mockPrizePool(1, -100, 0);
-        assertEq(claimer.computeTotalFees(1), UNSOLD_100_SECONDS_IN_FEE);
+        mockPrizePool(1, -100, 0, 1);
+        assertEq(claimer.computeTotalFees(0, 1), UNSOLD_100_SECONDS_IN_FEE);
     }
 
     function testComputeTotalFees_two() public {
-        mockPrizePool(1, -100, 0);
-        assertEq(claimer.computeTotalFees(2), UNSOLD_100_SECONDS_IN_FEE + SOLD_ONE_100_SECONDS_IN_FEE);
+        mockPrizePool(1, -100, 0, 1);
+        assertEq(claimer.computeTotalFees(0, 2), UNSOLD_100_SECONDS_IN_FEE + SOLD_ONE_100_SECONDS_IN_FEE);
     }
 
-    function testComputeMaxFee() public {
-        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.calculatePrizeSize.selector, 2), abi.encodePacked(SMALLEST_PRIZE_SIZE));
-        assertEq(claimer.computeMaxFee(), 0.5e18);
+    function testComputeMaxFee_normalPrizes() public {
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.numberOfTiers.selector), abi.encode(2));
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.getTierPrizeSize.selector, 1), abi.encodePacked(SMALLEST_PRIZE_SIZE));
+        assertEq(claimer.computeMaxFee(0), 0.5e18);
+        assertEq(claimer.computeMaxFee(1), 0.5e18);
+    }
+
+    function testComputeMaxFee_canaryPrizes() public {
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.numberOfTiers.selector), abi.encode(2));
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.getTierPrizeSize.selector, 2), abi.encodePacked(CANARY_PRIZE_SIZE));
+        assertEq(claimer.computeMaxFee(2), 0.2e18);
     }
 
     function mockPrizePool(
         uint256 drawId,
         int256 drawEndedRelativeToNow,
-        uint256 claimCount
+        uint256 claimCount,
+        uint8 tier
     ) public {
         uint numberOfTiers = 2;
         vm.mockCall(address(prizePool), abi.encodeWithSignature("getLastCompletedDrawId()"), abi.encodePacked(drawId));
         vm.mockCall(address(prizePool), abi.encodeWithSignature("estimatedPrizeCount()"), abi.encodePacked(ESTIMATED_PRIZES));
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.drawPeriodSeconds.selector), abi.encodePacked(TIME_TO_REACH_MAX));
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.numberOfTiers.selector), abi.encodePacked(numberOfTiers));
-        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.calculatePrizeSize.selector, numberOfTiers), abi.encodePacked(SMALLEST_PRIZE_SIZE));
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.getTierPrizeSize.selector, tier), abi.encodePacked(tier == numberOfTiers ? CANARY_PRIZE_SIZE : SMALLEST_PRIZE_SIZE));
         mockLastCompletedDrawAwardedAt(drawEndedRelativeToNow);
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.claimCount.selector), abi.encodePacked(claimCount));
     }
