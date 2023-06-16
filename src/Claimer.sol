@@ -109,10 +109,11 @@ contract Claimer is Multicall {
     /// @param _numTiers The total number of tiers
     /// @return The maximum fee that will be charged for a prize claim for the given tier
     function _computeMaxFee(uint8 _tier, uint8 _numTiers) internal view returns (uint256) {
-        if (_tier != _numTiers) { // canary tier
-            return _computeMaxFee(prizePool.getTierPrizeSize(_numTiers-1));
+        uint8 _canaryTier = _numTiers - 1;
+        if (_tier != _canaryTier) { // canary tier
+            return _computeMaxFee(prizePool.getTierPrizeSize(_canaryTier - 1));
         } else {
-            return _computeMaxFee(prizePool.getTierPrizeSize(_numTiers));
+            return _computeMaxFee(prizePool.getTierPrizeSize(_canaryTier));
         }
     }
 
