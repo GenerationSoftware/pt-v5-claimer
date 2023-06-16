@@ -12,7 +12,6 @@
 [submodule "lib/v5-prize-pool"]
 	path = lib/v5-prize-pool
 	url = https://github.com/pooltogether/v5-prize-pool
-	branch = pool-2775-prizepool-canary-tiers-and-prizes-should-not-be-treated
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/openzeppelin/openzeppelin-contracts
@@ -20,4 +19,4 @@
 [submodule "lib/v5-vault"]
 	path = lib/v5-vault
 	url = https://github.com/pooltogether/v5-vault
-	branch = claim-multiple-prizes
+	
