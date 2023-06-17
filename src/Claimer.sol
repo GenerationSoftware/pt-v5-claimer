@@ -27,6 +27,8 @@ contract Claimer is Multicall {
     /// @notice The minimum fee that will be charged
     uint256 public immutable minimumFee;
 
+    uint256 public immutable timeToReachMaxFee;
+
     /// @notice Constructs a new Claimer
     /// @param _prizePool The prize pool to claim for
     /// @param _minimumFee The minimum fee that should be charged
@@ -44,6 +46,7 @@ contract Claimer is Multicall {
         maxFeePortionOfPrize = _maxFeePortionOfPrize;
         decayConstant = LinearVRGDALib.getDecayConstant(LinearVRGDALib.getMaximumPriceDeltaScale(_minimumFee, _maximumFee, _timeToReachMaxFee));
         minimumFee = _minimumFee;
+        timeToReachMaxFee = _timeToReachMaxFee;
     }
 
     /// @notice Allows the call to claim prizes on behalf of others.
@@ -80,6 +83,10 @@ contract Claimer is Multicall {
         return _computeFeePerClaim(_computeMaxFee(_tier, prizePool.numberOfTiers()), _claimCount) * _claimCount;
     }
 
+    function computeFeePerClaim(uint256 _maxFee, uint _claimCount) external view returns (uint256) {
+        return _computeFeePerClaim(_maxFee, _claimCount);
+    }
+
     /// @notice Computes the total fees for the given number of claims
     /// @param _claimCount The number of claims to check
     /// @return The total fees for the claims
@@ -87,7 +94,7 @@ contract Claimer is Multicall {
         if (_claimCount == 0) {
             return 0;
         }
-        SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), prizePool.drawPeriodSeconds());
+        SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(prizePool.estimatedPrizeCount(), timeToReachMaxFee);
         uint256 elapsed = block.timestamp - (prizePool.lastCompletedDrawAwardedAt());
         uint256 fee;
 

@@ -12,13 +12,13 @@ import { LinearVRGDALib } from "src/lib/LinearVRGDALib.sol";
 
 contract ClaimerTest is Test {
     uint256 public constant MINIMUM_FEE = 0.0001e18;
-    uint256 public constant MAXIMUM_FEE = 2**128;
+    uint256 public constant MAXIMUM_FEE = 1000e18;
     uint256 public constant TIME_TO_REACH_MAX = 86400;
     uint256 public constant ESTIMATED_PRIZES = 1000;
     uint256 public constant SMALLEST_PRIZE_SIZE = 1e18;
     uint256 public constant CANARY_PRIZE_SIZE = 0.4e18;
-    uint256 public constant UNSOLD_100_SECONDS_IN_FEE = 100893106284719;
-    uint256 public constant SOLD_ONE_100_SECONDS_IN_FEE = 95351966415391;
+    uint256 public constant UNSOLD_100_SECONDS_IN_FEE = 100254032882995;
+    uint256 public constant SOLD_ONE_100_SECONDS_IN_FEE = 98651081754209;
     uint64 public constant MAX_FEE_PERCENTAGE_OF_PRIZE = 0.5e18;
 
     Claimer public claimer;
@@ -115,6 +115,31 @@ contract ClaimerTest is Test {
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.numberOfTiers.selector), abi.encode(3));
         vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.getTierPrizeSize.selector, 2), abi.encodePacked(CANARY_PRIZE_SIZE));
         assertEq(claimer.computeMaxFee(2), 0.2e18);
+    }
+
+    function testComputeFeePerClaim_minFee() public {
+        uint startTime = block.timestamp;
+        uint prizeCount = 10;
+        vm.mockCall(address(prizePool), abi.encodeWithSignature("estimatedPrizeCount()"), abi.encode(prizeCount));
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.lastCompletedDrawAwardedAt.selector), abi.encode(startTime));
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.claimCount.selector), abi.encode(0));
+
+        uint firstSaleTime = TIME_TO_REACH_MAX / prizeCount;
+        vm.warp(startTime + firstSaleTime);
+        assertApproxEqAbs(claimer.computeFeePerClaim(100e18, 1), MINIMUM_FEE, 4);
+    }
+
+    function testComputeFeePerClaim_maxFee() public {
+        uint startTime = block.timestamp;
+        uint prizeCount = 10;
+        vm.mockCall(address(prizePool), abi.encodeWithSignature("estimatedPrizeCount()"), abi.encode(prizeCount));
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.lastCompletedDrawAwardedAt.selector), abi.encode(startTime));
+        vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.claimCount.selector), abi.encode(0));
+
+        uint firstSaleTime = TIME_TO_REACH_MAX / prizeCount;
+
+        vm.warp(startTime + firstSaleTime + TIME_TO_REACH_MAX + 1);
+        assertApproxEqAbs(claimer.computeFeePerClaim(MAXIMUM_FEE, 1), MAXIMUM_FEE, 4);
     }
 
     function mockPrizePool(
