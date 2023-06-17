@@ -26,18 +26,58 @@ library LinearVRGDALib {
         return toSD59x18(int256(_count)).div(toSD59x18(int256(_durationSeconds)));
     }
 
-    /// @notice Calculate the price of a token according to the VRGDA formula.
-    /// @param _timeSinceStart Time passed since the VRGDA began, scaled by 1e18.
-    /// @param _sold The total number of tokens that have been sold so far.
-    /// @return The price of a token according to VRGDA, scaled by 1e18.
+    /// @notice Calculate the price of a token according to the VRGDA formula
+    /// @param _targetPrice The target price of sale scaled by 1e18
+    /// @param _timeSinceStart Time passed since the VRGDA began, scaled by 1e18
+    /// @param _sold The total number of tokens that have been sold so far
+    /// @param _perTimeUnit The target number of claims to sell per second
+    /// @param _decayConstant The decay constant for the VRGDA formula
+    /// @return The price of a token according to VRGDA, scaled by 1e18
+    /// @dev This function has some cases where some calculations might overflow. If an overflow will occur and the calculation would have resulted in a high price, then the max uint value is returned. If an overflow would happen where a low price would be returned, then zero is returned.
     function getVRGDAPrice(uint256 _targetPrice, uint256 _timeSinceStart, uint256 _sold, SD59x18 _perTimeUnit, SD59x18 _decayConstant) internal pure returns (uint256) {
-        int256 targetTime = toSD59x18(int256(_timeSinceStart)).sub(toSD59x18(int256(_sold+1)).div(_perTimeUnit)).unwrap();
+        int256 targetPriceInt = int256(_targetPrice);
+
+        // The division on this line will never overflow if sold is expected to be max 4**15 (max claims at largest tier)
+        int256 targetTimeUnwrapped = toSD59x18(int256(_timeSinceStart)).sub(toSD59x18(int256(_sold+1)).div(_perTimeUnit)).unwrap();
+        int256 decayConstantUnwrapped = _decayConstant.unwrap();
         unchecked {
-            int256 exp = unsafeWadMul(_decayConstant.unwrap(), targetTime);
-            // Compute exponent and check if it is at the max for the `wadExp(exp)` function. If so, limit at max int.
-            if(exp >= 135305999368893231589) return uint256(type(int256).max);
-            // prettier-ignore
-            return uint256(wadMul(int256(_targetPrice*1e18), wadExp(exp))) / 1e18;
+
+            // Check if next multiplication will have overflow. If so, return max uint.
+            if (targetTimeUnwrapped > 0 && decayConstantUnwrapped > type(int256).max / targetTimeUnwrapped) {
+                return type(uint256).max;
+            }
+            // Check if next multiplication will have a negative overflow. If so, return zero.
+            if (targetTimeUnwrapped < 0 && decayConstantUnwrapped > type(int256).min / targetTimeUnwrapped) {
+                return 0;
+            }
+            int256 exp = unsafeWadMul(decayConstantUnwrapped, targetTimeUnwrapped);
+
+            // Check if exponent is at the max for the `wadExp` function. If so, limit at max uint.
+            if (exp >= 135305999368893231589) {
+                return type(uint256).max;
+            }
+            int256 expResult = wadExp(exp);
+
+            // Return zero if expResult is zero. This prevents zero division later on.
+            if (expResult == 0) {
+                return 0;
+            }
+
+            // If exponential result is greater than 1, then don't worry about extra precision to avoid extra risk of overflow
+            if (expResult > 1e18) {
+                // Check if multiplication will overflow and return max uint if it will.
+                if (targetPriceInt > type(int256).max / expResult) {
+                    return type(uint256).max;
+                }
+                return uint256(unsafeWadMul(targetPriceInt, expResult));
+            } else {
+                // Check if multiplication will overflow and return max uint if it will.
+                int256 extraPrecisionExpResult  = int128(expResult * 1e18);
+                if (targetPriceInt > type(int256).max / extraPrecisionExpResult) {
+                    return type(uint256).max;
+                }
+                return uint256(unsafeWadMul(targetPriceInt, extraPrecisionExpResult)) / 1e18;
+            }
         }
     }
 
