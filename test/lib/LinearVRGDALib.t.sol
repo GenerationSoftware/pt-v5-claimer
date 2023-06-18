@@ -42,6 +42,50 @@ contract LinearVRGDALibTest is Test {
         assertEq(wrapper.getVRGDAPrice(0.0001e18, 11, 20, perTimeUnit, decayConstant), 0.000038554328942953e18);
     }
 
+    function testGetVRGDAPrice_overflowExp() public {
+        uint32 maxSold = 4**15;
+        uint64 maxTime = type(uint64).max;
+        SD59x18 perTimeUnit = wrapper.getPerTimeUnit(maxSold, maxTime);
+        SD59x18 decayConstant = SD59x18.wrap(type(int256).max); // max to test overflow
+        assertEq(wrapper.getVRGDAPrice(0.0001e18, maxTime, 0, perTimeUnit, decayConstant), type(uint256).max); // sold zero at end
+    }
+
+    function testGetVRGDAPrice_negOverflowExp() public {
+        uint32 maxSold = 4**15;
+        uint64 maxTime = type(uint64).max;
+        SD59x18 perTimeUnit = wrapper.getPerTimeUnit(maxSold, maxTime);
+        SD59x18 decayConstant = SD59x18.wrap(type(int256).max); // max to test overflow
+        assertEq(wrapper.getVRGDAPrice(0.0001e18, 0, maxSold, perTimeUnit, decayConstant), 0); // sold max at start
+    }
+
+    function testGetVRGDAPrice_overflowExpResult() public {
+        uint32 maxSold = 4**15;
+        uint64 maxTime = type(uint64).max;
+        SD59x18 perTimeUnit = wrapper.getPerTimeUnit(maxSold, 1);
+        SD59x18 decayConstant = wrapper.getDecayConstant(ud2x18(1.1e18));
+        assertEq(wrapper.getVRGDAPrice(0.0001e18, maxTime, 0, perTimeUnit, decayConstant), type(uint256).max);
+    }
+
+    function testGetVRGDAPrice_expResultZero() public {
+        uint32 maxSold = 4**15;
+        uint64 maxTime = type(uint64).max;
+        SD59x18 perTimeUnit = wrapper.getPerTimeUnit(maxSold, maxTime);
+        SD59x18 decayConstant = wrapper.getDecayConstant(ud2x18(1.1e18));
+        assertEq(wrapper.getVRGDAPrice(0.0001e18, 0, maxSold, perTimeUnit, decayConstant), 0);
+    }
+
+    function testGetVRGDAPrice_ahead_priceOverflow() public {
+        SD59x18 perTimeUnit = wrapper.getPerTimeUnit(1000, 1000);
+        SD59x18 decayConstant = wrapper.getDecayConstant(ud2x18(1.1e18));
+        assertEq(wrapper.getVRGDAPrice(uint256(type(int256).max), 11, 20, perTimeUnit, decayConstant), type(uint256).max);
+    }
+
+    function testGetVRGDAPrice_behind_priceOverflow() public {
+        SD59x18 perTimeUnit = wrapper.getPerTimeUnit(1000, 1000);
+        SD59x18 decayConstant = wrapper.getDecayConstant(ud2x18(1.1e18));
+        assertEq(wrapper.getVRGDAPrice(uint256(type(int256).max), 40, 20, perTimeUnit, decayConstant), type(uint256).max);
+    }
+
     function testGetMaximumPriceDeltaScale() public {
         uint256 maxPrice = 0.03e18;
         uint256 targetPrice = 0.0001e18;
