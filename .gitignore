@@ -20,3 +20,4 @@ docs/
 # Coverage
 lcov.info
 
+node_modules/
