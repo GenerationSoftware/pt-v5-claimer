@@ -102,7 +102,7 @@ contract Claimer is Multicall {
       prizePool.estimatedPrizeCount(),
       timeToReachMaxFee
     );
-    uint256 elapsed = block.timestamp - (prizePool.lastCompletedDrawAwardedAt());
+    uint256 elapsed = block.timestamp - (prizePool.lastClosedDrawAwardedAt());
     uint256 fee;
 
     for (uint i = 0; i < _claimCount; i++) {

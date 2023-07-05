@@ -7,7 +7,7 @@ import { Claimer } from "src/Claimer.sol";
 import { UD2x18, ud2x18 } from "prb-math/UD2x18.sol";
 import { SD59x18 } from "prb-math/SD59x18.sol";
 
-import { Vault, IERC20, TwabController, IERC4626, PrizePool, Claimer as VaultClaimer } from "v5-vault/Vault.sol";
+import { Vault, IERC20, TwabController, IERC4626, PrizePool } from "v5-vault/Vault.sol";
 import { LinearVRGDALib } from "src/libraries/LinearVRGDALib.sol";
 
 contract ClaimerTest is Test {
@@ -101,7 +101,7 @@ contract ClaimerTest is Test {
     address[] memory winners = newWinners(winner1);
     uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
     mockPrizePool(1, -1, 0);
-    mockLastCompletedDrawAwardedAt(-80000); // much time has passed, meaning the fee is large
+    mockLastClosedDrawAwardedAt(-80000); // much time has passed, meaning the fee is large
     mockClaimPrizes(1, winners, prizeIndices, uint96(0.5e18), address(this), 100);
     uint256 totalFees = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this));
     assertEq(totalFees, 0.5e18, "Total fees");
@@ -111,7 +111,7 @@ contract ClaimerTest is Test {
     address[] memory winners = newWinners(winner1);
     uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
     mockPrizePool(1, -1, 0);
-    mockLastCompletedDrawAwardedAt(-1_000_000); // a long time has passed, meaning the fee should be capped (and there should be no EXP_OVERFLOW!)
+    mockLastClosedDrawAwardedAt(-1_000_000); // a long time has passed, meaning the fee should be capped (and there should be no EXP_OVERFLOW!)
     mockClaimPrizes(1, winners, prizeIndices, uint96(0.5e18), address(this), 100);
     uint256 totalFees = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this));
     assertEq(totalFees, 0.5e18, "Total fees");
@@ -174,7 +174,7 @@ contract ClaimerTest is Test {
     );
     vm.mockCall(
       address(prizePool),
-      abi.encodeWithSelector(prizePool.lastCompletedDrawAwardedAt.selector),
+      abi.encodeWithSelector(prizePool.lastClosedDrawAwardedAt.selector),
       abi.encode(startTime)
     );
     vm.mockCall(
@@ -198,7 +198,7 @@ contract ClaimerTest is Test {
     );
     vm.mockCall(
       address(prizePool),
-      abi.encodeWithSelector(prizePool.lastCompletedDrawAwardedAt.selector),
+      abi.encodeWithSelector(prizePool.lastClosedDrawAwardedAt.selector),
       abi.encode(startTime)
     );
     vm.mockCall(
@@ -217,7 +217,7 @@ contract ClaimerTest is Test {
     uint numberOfTiers = 3;
     vm.mockCall(
       address(prizePool),
-      abi.encodeWithSignature("getLastCompletedDrawId()"),
+      abi.encodeWithSignature("getLastClosedDrawId()"),
       abi.encodePacked(drawId)
     );
     vm.mockCall(
@@ -245,7 +245,7 @@ contract ClaimerTest is Test {
       abi.encodeWithSelector(prizePool.getTierPrizeSize.selector, numberOfTiers - 2),
       abi.encodePacked(SMALLEST_PRIZE_SIZE)
     );
-    mockLastCompletedDrawAwardedAt(drawEndedRelativeToNow);
+    mockLastClosedDrawAwardedAt(drawEndedRelativeToNow);
     vm.mockCall(
       address(prizePool),
       abi.encodeWithSelector(prizePool.claimCount.selector),
@@ -253,10 +253,10 @@ contract ClaimerTest is Test {
     );
   }
 
-  function mockLastCompletedDrawAwardedAt(int256 drawEndedRelativeToNow) public {
+  function mockLastClosedDrawAwardedAt(int256 drawEndedRelativeToNow) public {
     vm.mockCall(
       address(prizePool),
-      abi.encodeWithSelector(prizePool.lastCompletedDrawAwardedAt.selector),
+      abi.encodeWithSelector(prizePool.lastClosedDrawAwardedAt.selector),
       abi.encodePacked(int256(block.timestamp) + drawEndedRelativeToNow)
     );
   }
