@@ -9,14 +9,10 @@
 	path = lib/prb-math
 	url = https://github.com/PaulRBerg/prb-math
 	branch = v3
-[submodule "lib/v5-prize-pool"]
-	path = lib/v5-prize-pool
-	url = https://github.com/pooltogether/v5-prize-pool
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/openzeppelin/openzeppelin-contracts
 	branch = release-v4.9
-[submodule "lib/v5-vault"]
-	path = lib/v5-vault
-	url = https://github.com/pooltogether/v5-vault
-	
+[submodule "lib/pt-v5-vault"]
+	path = lib/pt-v5-vault
+	url = https://github.com/GenerationSoftware/pt-v5-vault
