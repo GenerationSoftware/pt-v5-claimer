@@ -21,3 +21,4 @@ docs/
 lcov.info
 
 node_modules/
+coverage/

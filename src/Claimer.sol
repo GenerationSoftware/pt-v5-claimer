@@ -87,6 +87,10 @@ contract Claimer is Multicall {
       _claimCount;
   }
 
+  /// @notice Computes the fees for several claims
+  /// @param _maxFee the maximum fee that can be charged
+  /// @param _claimCount the number of claims to check
+  /// @return The fees for the claims
   function computeFeePerClaim(uint256 _maxFee, uint _claimCount) external view returns (uint256) {
     return _computeFeePerClaim(_maxFee, _claimCount);
   }
