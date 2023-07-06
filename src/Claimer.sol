@@ -70,7 +70,11 @@ contract Claimer is Multicall {
     }
 
     uint96 feePerClaim = uint96(
-      _computeFeePerClaim(_computeMaxFee(tier, prizePool.numberOfTiers()), claimCount)
+      _computeFeePerClaim(
+        _computeMaxFee(tier, prizePool.numberOfTiers()),
+        claimCount,
+        prizePool.claimCount()
+      )
     );
 
     vault.claimPrizes(tier, winners, prizeIndices, feePerClaim, _feeRecipient);
@@ -78,27 +82,55 @@ contract Claimer is Multicall {
     return feePerClaim * claimCount;
   }
 
-  /// @notice Computes the total fees for the given number of claims
+  /// @notice Computes the total fees for the given number of claims.
+  /// @param _tier The tier to claim prizes from
   /// @param _claimCount The number of claims
   /// @return The total fees for those claims
   function computeTotalFees(uint8 _tier, uint _claimCount) external view returns (uint256) {
     return
-      _computeFeePerClaim(_computeMaxFee(_tier, prizePool.numberOfTiers()), _claimCount) *
-      _claimCount;
+      _computeFeePerClaim(
+        _computeMaxFee(_tier, prizePool.numberOfTiers()),
+        _claimCount,
+        prizePool.claimCount()
+      ) * _claimCount;
   }
 
-  /// @notice Computes the fees for several claims
+  /// @notice Computes the total fees for the given number of claims if a number of claims have already been made.
+  /// @param _tier The tier to claim prizes from
+  /// @param _claimCount The number of claims
+  /// @param _claimedCount The number of prizes already claimed
+  /// @return The total fees for those claims
+  function computeTotalFees(
+    uint8 _tier,
+    uint _claimCount,
+    uint _claimedCount
+  ) external view returns (uint256) {
+    return
+      _computeFeePerClaim(
+        _computeMaxFee(_tier, prizePool.numberOfTiers()),
+        _claimCount,
+        _claimedCount
+      ) * _claimCount;
+  }
+
+  /// @notice Computes the fees for several claims.
   /// @param _maxFee the maximum fee that can be charged
   /// @param _claimCount the number of claims to check
   /// @return The fees for the claims
   function computeFeePerClaim(uint256 _maxFee, uint _claimCount) external view returns (uint256) {
-    return _computeFeePerClaim(_maxFee, _claimCount);
+    return _computeFeePerClaim(_maxFee, _claimCount, prizePool.claimCount());
   }
 
-  /// @notice Computes the total fees for the given number of claims
+  /// @notice Computes the total fees for the given number of claims.
+  /// @param _maxFee The maximum fee
   /// @param _claimCount The number of claims to check
+  /// @param _claimedCount The number of prizes already claimed
   /// @return The total fees for the claims
-  function _computeFeePerClaim(uint256 _maxFee, uint _claimCount) internal view returns (uint256) {
+  function _computeFeePerClaim(
+    uint256 _maxFee,
+    uint _claimCount,
+    uint _claimedCount
+  ) internal view returns (uint256) {
     if (_claimCount == 0) {
       return 0;
     }
@@ -115,7 +147,7 @@ contract Claimer is Multicall {
         decayConstant,
         perTimeUnit,
         elapsed,
-        prizePool.claimCount() + i,
+        _claimedCount + i,
         _maxFee
       );
     }
@@ -123,13 +155,14 @@ contract Claimer is Multicall {
     return fee / _claimCount;
   }
 
-  /// @notice Computes the maximum fee that can be charged
+  /// @notice Computes the maximum fee that can be charged.
+  /// @param _tier The tier to compute the max fee for
   /// @return The maximum fee that can be charged
   function computeMaxFee(uint8 _tier) public view returns (uint256) {
     return _computeMaxFee(_tier, prizePool.numberOfTiers());
   }
 
-  /// @notice Computes the max fee given the tier and number of tiers
+  /// @notice Computes the max fee given the tier and number of tiers.
   /// @param _tier The tier to compute the max fee for
   /// @param _numTiers The total number of tiers
   /// @return The maximum fee that will be charged for a prize claim for the given tier
@@ -143,14 +176,15 @@ contract Claimer is Multicall {
     }
   }
 
-  /// @notice Computes the maximum fee that can be charged
+  /// @notice Computes the maximum fee that can be charged.
+  /// @param _prize The prize to compute the max fee for
   /// @return The maximum fee that can be charged
   function _computeMaxFee(uint256 _prize) internal view returns (uint256) {
     // compute the maximum fee that can be charged
     return UD60x18.unwrap(maxFeePortionOfPrize.intoUD60x18().mul(UD60x18.wrap(_prize)));
   }
 
-  /// @notice Computes the fee for the next claim
+  /// @notice Computes the fee for the next claim.
   /// @param _minimumFee The minimum fee that should be charged
   /// @param _decayConstant The VRGDA decay constant
   /// @param _perTimeUnit The num to be claimed per second
