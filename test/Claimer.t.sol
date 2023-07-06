@@ -135,6 +135,21 @@ contract ClaimerTest is Test {
     );
   }
 
+  function testComputeTotalFeesAlreadyClaimed_zero() public {
+    mockPrizePool(1, -100, 0);
+    assertEq(claimer.computeTotalFees(0, 0, 10), 0);
+  }
+
+  function testComputeTotalFeesAlreadyClaimed_one() public {
+    mockPrizePool(1, -100, 0);
+    assertEq(claimer.computeTotalFees(0, 1, 10), 85330020869909);
+  }
+
+  function testComputeTotalFeesAlreadyClaimed_two() public {
+    mockPrizePool(1, -100, 0);
+    assertEq(claimer.computeTotalFees(0, 2, 10), 169295709060728);
+  }
+
   function testComputeMaxFee_normalPrizes() public {
     vm.mockCall(
       address(prizePool),
