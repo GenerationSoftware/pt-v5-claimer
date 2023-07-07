@@ -6,7 +6,7 @@
 
 # PoolTogether V5 VRGDA Claimer
 
-[![Code Coverage](https://github.com/pooltogether/v5-vrgda-claimer/actions/workflows/coverage.yml/badge.svg)](https://github.com/pooltogether/v5-vrgda-claimer/actions/workflows/coverage.yml)
+[![Code Coverage](https://github.com/generationsoftware/pt-v5-claimer/actions/workflows/coverage.yml/badge.svg)](https://github.com/generationsoftware/pt-v5-claimer/actions/workflows/coverage.yml)
 [![built-with openzeppelin](https://img.shields.io/badge/built%20with-OpenZeppelin-3677FF)](https://docs.openzeppelin.com/)
 ![MIT license](https://img.shields.io/badge/license-MIT-blue)
 
