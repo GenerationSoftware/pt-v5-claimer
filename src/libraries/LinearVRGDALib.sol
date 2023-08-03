@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 import { UD2x18, ud2x18 } from "prb-math/UD2x18.sol";
-import { SD59x18, toSD59x18, E } from "prb-math/SD59x18.sol";
+import { SD59x18, convert, E } from "prb-math/SD59x18.sol";
 import { wadExp, wadLn, wadMul, unsafeWadMul, toWadUnsafe, unsafeWadDiv, wadDiv } from "solmate/utils/SignedWadMath.sol";
 
 /// @title Linear Variable Rate Gradual Dutch Auction
@@ -25,7 +25,7 @@ library LinearVRGDALib {
     uint256 _count,
     uint256 _durationSeconds
   ) internal pure returns (SD59x18) {
-    return toSD59x18(int256(_count)).div(toSD59x18(int256(_durationSeconds)));
+    return convert(int256(_count)).div(convert(int256(_durationSeconds)));
   }
 
   /// @notice Calculate the price of a token according to the VRGDA formula
@@ -46,8 +46,8 @@ library LinearVRGDALib {
     int256 targetPriceInt = int256(_targetPrice);
 
     // The division on this line will never overflow if sold is expected to be max 4**15 (max claims at largest tier)
-    int256 targetTimeUnwrapped = toSD59x18(int256(_timeSinceStart))
-      .sub(toSD59x18(int256(_sold + 1)).div(_perTimeUnit))
+    int256 targetTimeUnwrapped = convert(int256(_timeSinceStart))
+      .sub(convert(int256(_sold + 1)).div(_perTimeUnit))
       .unwrap();
     int256 decayConstantUnwrapped = _decayConstant.unwrap();
     unchecked {
