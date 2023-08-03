@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import { UD2x18, ud2x18 } from "prb-math/UD2x18.sol";
 import { SD59x18, toSD59x18, E } from "prb-math/SD59x18.sol";

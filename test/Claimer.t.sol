@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity >=0.8.17;
 
 import "forge-std/Test.sol";
 
-import { Claimer } from "src/Claimer.sol";
+import { Claimer } from "../src/Claimer.sol";
 import { UD2x18, ud2x18 } from "prb-math/UD2x18.sol";
 import { SD59x18 } from "prb-math/SD59x18.sol";
 
-import { Vault, IERC20, TwabController, IERC4626, PrizePool } from "v5-vault/Vault.sol";
-import { LinearVRGDALib } from "src/libraries/LinearVRGDALib.sol";
+import { Vault, IERC20, TwabController, IERC4626, PrizePool } from "pt-v5-vault/Vault.sol";
+import { LinearVRGDALib } from "../src/libraries/LinearVRGDALib.sol";
 
 contract ClaimerTest is Test {
   uint256 public constant MINIMUM_FEE = 0.0001e18;

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import { SD59x18 } from "prb-math/SD59x18.sol";
 import { UD2x18 } from "prb-math/UD2x18.sol";
 import { UD60x18 } from "prb-math/UD60x18.sol";
-import { PrizePool } from "v5-prize-pool/PrizePool.sol";
+import { PrizePool } from "pt-v5-prize-pool/PrizePool.sol";
 import { Multicall } from "openzeppelin/utils/Multicall.sol";
 
 import { LinearVRGDALib } from "./libraries/LinearVRGDALib.sol";
-import { Vault } from "v5-vault/Vault.sol";
+import { Vault } from "pt-v5-vault/Vault.sol";
 
 /// @title Variable Rate Gradual Dutch Auction (VRGDA) Claimer
 /// @author PoolTogether Inc. Team
