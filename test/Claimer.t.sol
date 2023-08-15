@@ -223,64 +223,47 @@ contract ClaimerTest is Test {
 
   function testComputeTotalFees_zero() public {
     mockPrizePool(1, -100, 0);
-    assertEq(claimer.computeTotalFees(0, 0), 0);
+    assertEq(claimer.computeTotalFees(1, 0), 0);
   }
 
   function testComputeTotalFees_one() public {
     mockPrizePool(1, -100, 0);
-    assertEq(claimer.computeTotalFees(0, 1), UNSOLD_100_SECONDS_IN_FEE);
+    assertEq(claimer.computeTotalFees(1, 1), UNSOLD_100_SECONDS_IN_FEE);
   }
 
   function testComputeTotalFees_two() public {
     mockPrizePool(1, -100, 0);
     assertEq(
-      claimer.computeTotalFees(0, 2),
+      claimer.computeTotalFees(1, 2),
       UNSOLD_100_SECONDS_IN_FEE + SOLD_ONE_100_SECONDS_IN_FEE
     );
   }
 
   function testComputeTotalFeesAlreadyClaimed_zero() public {
     mockPrizePool(1, -100, 0);
-    assertEq(claimer.computeTotalFees(0, 0, 10), 0);
+    assertEq(claimer.computeTotalFees(1, 0, 10), 0);
   }
 
   function testComputeTotalFeesAlreadyClaimed_one() public {
     mockPrizePool(1, -100, 0);
-    assertEq(claimer.computeTotalFees(0, 1, 10), 85330020869909);
+    assertEq(claimer.computeTotalFees(1, 1, 10), 85330020869909);
   }
 
   function testComputeTotalFeesAlreadyClaimed_two() public {
     mockPrizePool(1, -100, 0);
-    assertEq(claimer.computeTotalFees(0, 2, 10), 169295709060728);
+    assertEq(claimer.computeTotalFees(1, 2, 10), 169295709060728);
   }
 
   function testComputeMaxFee_normalPrizes() public {
-    vm.mockCall(
-      address(prizePool),
-      abi.encodeWithSelector(prizePool.numberOfTiers.selector),
-      abi.encode(3)
-    );
-    vm.mockCall(
-      address(prizePool),
-      abi.encodeWithSelector(prizePool.getTierPrizeSize.selector, 1),
-      abi.encodePacked(SMALLEST_PRIZE_SIZE)
-    );
-    assertEq(claimer.computeMaxFee(0), 0.5e18);
+    mockGetTierPrizeSize(0, 10e18);
+    mockGetTierPrizeSize(1, SMALLEST_PRIZE_SIZE);
+    assertEq(claimer.computeMaxFee(0), 5e18);
     assertEq(claimer.computeMaxFee(1), 0.5e18);
   }
 
   function testComputeMaxFee_canaryPrizes() public {
-    vm.mockCall(
-      address(prizePool),
-      abi.encodeWithSelector(prizePool.numberOfTiers.selector),
-      abi.encode(3)
-    );
-    vm.mockCall(
-      address(prizePool),
-      abi.encodeWithSelector(prizePool.getTierPrizeSize.selector, 2),
-      abi.encodePacked(CANARY_PRIZE_SIZE)
-    );
-    assertEq(claimer.computeMaxFee(2), 0.2e18);
+    mockGetTierPrizeSize(2, 0.5e18);
+    assertEq(claimer.computeMaxFee(2), 0.25e18);
   }
 
   function testComputeFeePerClaim_minFee() public {
@@ -349,21 +332,7 @@ contract ClaimerTest is Test {
       abi.encodeWithSelector(prizePool.drawPeriodSeconds.selector),
       abi.encodePacked(TIME_TO_REACH_MAX)
     );
-    vm.mockCall(
-      address(prizePool),
-      abi.encodeWithSelector(prizePool.numberOfTiers.selector),
-      abi.encodePacked(numberOfTiers)
-    );
-    vm.mockCall(
-      address(prizePool),
-      abi.encodeWithSelector(prizePool.getTierPrizeSize.selector, numberOfTiers - 1),
-      abi.encodePacked(CANARY_PRIZE_SIZE)
-    );
-    vm.mockCall(
-      address(prizePool),
-      abi.encodeWithSelector(prizePool.getTierPrizeSize.selector, numberOfTiers - 2),
-      abi.encodePacked(SMALLEST_PRIZE_SIZE)
-    );
+    mockGetTierPrizeSize(1, SMALLEST_PRIZE_SIZE);
     mockLastClosedDrawAwardedAt(drawEndedRelativeToNow);
     vm.mockCall(
       address(prizePool),
@@ -423,6 +392,14 @@ contract ClaimerTest is Test {
         _feeRecipient
       ),
       abi.encodePacked(_result)
+    );
+  }
+
+  function mockGetTierPrizeSize(uint8 _tier, uint256 prizeSize) internal {
+    vm.mockCall(
+      address(prizePool),
+      abi.encodeWithSelector(prizePool.getTierPrizeSize.selector, _tier),
+      abi.encodePacked(prizeSize)
     );
   }
 }
