@@ -15,6 +15,11 @@ import { Vault } from "pt-v5-vault/Vault.sol";
 /// @param prizeIndicesLength Length of the prize indices array
 error ClaimArraySizeMismatch(uint256 winnersLength, uint256 prizeIndicesLength);
 
+/// @notice Emitted when the minimum fee is less than or equal to the max fee
+/// @param minFee The minimum fee passed
+/// @param maxFee The maximum fee passed
+error MinFeeLeMax(uint256 minFee, uint256 maxFee);
+
 /// @title Variable Rate Gradual Dutch Auction (VRGDA) Claimer
 /// @author PoolTogether Inc. Team
 /// @notice This contract uses a variable rate gradual dutch auction to inventivize prize claims on behalf of others
@@ -46,6 +51,9 @@ contract Claimer is Multicall {
     uint256 _timeToReachMaxFee,
     UD2x18 _maxFeePortionOfPrize
   ) {
+    if (_minimumFee >= _maximumFee) {
+      revert MinFeeLeMax(_minimumFee, _maximumFee);
+    }
     prizePool = _prizePool;
     maxFeePortionOfPrize = _maxFeePortionOfPrize;
     decayConstant = LinearVRGDALib.getDecayConstant(
