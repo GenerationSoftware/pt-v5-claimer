@@ -10,6 +10,11 @@ import { Multicall } from "openzeppelin/utils/Multicall.sol";
 import { LinearVRGDALib } from "./libraries/LinearVRGDALib.sol";
 import { Vault } from "pt-v5-vault/Vault.sol";
 
+/// @notice Thrown when the length of the winners array does not match the length of the prize indices array while claiming.
+/// @param winnersLength Length of the winners array
+/// @param prizeIndicesLength Length of the prize indices array
+error ClaimArraySizeMismatch(uint256 winnersLength, uint256 prizeIndicesLength);
+
 /// @title Variable Rate Gradual Dutch Auction (VRGDA) Claimer
 /// @author PoolTogether Inc. Team
 /// @notice This contract uses a variable rate gradual dutch auction to inventivize prize claims on behalf of others
@@ -64,6 +69,10 @@ contract Claimer is Multicall {
     uint32[][] calldata prizeIndices,
     address _feeRecipient
   ) external returns (uint256 totalFees) {
+    if (winners.length != prizeIndices.length) {
+      revert ClaimArraySizeMismatch(winners.length, prizeIndices.length);
+    }
+
     uint256 claimCount;
     for (uint i = 0; i < winners.length; i++) {
       claimCount += prizeIndices[i].length;
