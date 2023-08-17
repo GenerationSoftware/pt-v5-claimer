@@ -116,13 +116,19 @@ contract Claimer is Multicall {
     );
   }
 
+  /// @notice Computes the fee per claim given a batch of winners and prize indices
+  /// @param _tier The tier the claims are for
+  /// @param _winners The array of winners to claim for
+  /// @param _prizeIndices The array of prize indices to claim for each winner (length should match winners)
+  /// @return The fee per claim
   function _computeFeePerClaimForBatch(
     uint8 _tier,
     address[] calldata _winners,
     uint32[][] calldata _prizeIndices
   ) internal view returns (uint256) {
     uint256 claimCount;
-    for (uint i = 0; i < _winners.length; i++) {
+    uint length = _winners.length;
+    for (uint i = 0; i < length; i++) {
       claimCount += _prizeIndices[i].length;
     }
 
@@ -133,6 +139,14 @@ contract Claimer is Multicall {
     );
   }
 
+  /// @notice Claims prizes for a batch of winners and prize indices
+  /// @param _vault The vault to claim from
+  /// @param _tier The tier to claim for
+  /// @param _winners The array of winners to claim for
+  /// @param _prizeIndices The array of prize indices to claim for each winner (length should match winners)
+  /// @param _feeRecipient The address to receive the claim fees
+  /// @param _feePerClaim The fee to charge for each claim
+  /// @return The number of claims that were successful
   function _claim(
     Vault _vault,
     uint8 _tier,
@@ -146,7 +160,7 @@ contract Claimer is Multicall {
     for (uint256 w = 0; w < winnersLength; w++) {
       uint256 prizeIndicesLength = _prizeIndices[w].length;
       for (uint256 p = 0; p < prizeIndicesLength; p++) {
-        if (0 < _vault.claimPrize(
+        if (0 != _vault.claimPrize(
           _winners[w],
           _tier,
           _prizeIndices[w][p],

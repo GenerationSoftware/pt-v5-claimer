@@ -15,4 +15,3 @@
 [submodule "lib/pt-v5-vault"]
 	path = lib/pt-v5-vault
 	url = https://github.com/GenerationSoftware/pt-v5-vault
-	branch = gen-221-c4-issue-115
