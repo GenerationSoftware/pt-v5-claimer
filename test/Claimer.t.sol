@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 
 import {
   Claimer,
-  MinFeeLeMax
+  MinFeeGeMax
 } from "../src/Claimer.sol";
 import { UD2x18, ud2x18 } from "prb-math/UD2x18.sol";
 import { SD59x18 } from "prb-math/SD59x18.sol";
@@ -71,8 +71,8 @@ contract ClaimerTest is Test {
     assertEq(claimer.decayConstant().unwrap(), decayConstant.unwrap());
   }
 
-  function testConstructor_MinFeeLeMax() public {
-    vm.expectRevert(abi.encodeWithSelector(MinFeeLeMax.selector, 1e18, 0.5e18));
+  function testConstructor_MinFeeGeMax() public {
+    vm.expectRevert(abi.encodeWithSelector(MinFeeGeMax.selector, 1e18, 0.5e18));
     new Claimer(
       prizePool,
       1e18,
