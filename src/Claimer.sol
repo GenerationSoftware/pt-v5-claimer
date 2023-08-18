@@ -60,7 +60,7 @@ contract Claimer is Multicall {
   /// @param _minimumFee The minimum fee that should be charged
   /// @param _maximumFee The maximum fee that should be charged
   /// @param _timeToReachMaxFee The time it should take to reach the maximum fee (for example should be the draw period in seconds)
-  /// @param _maxFeePortionOfPrize The maximum fee that can be charged as a portion of the smallest prize size. Fixed point 18 number
+  /// @param _maxFeePortionOfPrize The maximum fee that can be charged as a portion of the prize size. Fixed point 18 number
   constructor(
     PrizePool _prizePool,
     uint256 _minimumFee,
@@ -256,7 +256,7 @@ contract Claimer is Multicall {
     return _computeMaxFee(_tier);
   }
 
-  /// @notice Computes the max fee given the tier and number of tiers.
+  /// @notice Computes the max fee given the tier
   /// @param _tier The tier to compute the max fee for
   /// @return The maximum fee that will be charged for a prize claim for the given tier
   function _computeMaxFee(uint8 _tier) internal view returns (uint256) {
