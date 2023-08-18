@@ -3,7 +3,10 @@ pragma solidity >=0.8.17;
 
 import "forge-std/Test.sol";
 
-import { Claimer } from "../src/Claimer.sol";
+import {
+  Claimer,
+  MinFeeGeMax
+} from "../src/Claimer.sol";
 import { UD2x18, ud2x18 } from "prb-math/UD2x18.sol";
 import { SD59x18 } from "prb-math/SD59x18.sol";
 
@@ -66,6 +69,17 @@ contract ClaimerTest is Test {
     assertEq(address(claimer.prizePool()), address(prizePool));
     assertEq(claimer.minimumFee(), MINIMUM_FEE);
     assertEq(claimer.decayConstant().unwrap(), decayConstant.unwrap());
+  }
+
+  function testConstructor_MinFeeGeMax() public {
+    vm.expectRevert(abi.encodeWithSelector(MinFeeGeMax.selector, 1e18, 0.5e18));
+    new Claimer(
+      prizePool,
+      1e18,
+      0.5e18,
+      TIME_TO_REACH_MAX,
+      ud2x18(MAX_FEE_PERCENTAGE_OF_PRIZE)
+    );
   }
 
   function testClaimPrizes_single() public {
