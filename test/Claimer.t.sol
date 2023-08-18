@@ -10,6 +10,9 @@ import { SD59x18 } from "prb-math/SD59x18.sol";
 import { Vault, IERC20, TwabController, IERC4626, PrizePool } from "pt-v5-vault/Vault.sol";
 import { LinearVRGDALib } from "../src/libraries/LinearVRGDALib.sol";
 
+// Custom Errors
+error ClaimArraySizeMismatch(uint256 winnersLength, uint256 prizeIndicesLength);
+
 contract ClaimerTest is Test {
   uint256 public constant MINIMUM_FEE = 0.0001e18;
   uint256 public constant MAXIMUM_FEE = 1000e18;
@@ -115,6 +118,40 @@ contract ClaimerTest is Test {
     mockClaimPrizes(1, winners, prizeIndices, uint96(0.5e18), address(this), 100);
     uint256 totalFees = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this));
     assertEq(totalFees, 0.5e18, "Total fees");
+  }
+
+  function testClaimPrizes_arrayMismatchGt() public {
+    // prize indices gt winners
+    address[] memory winners = newWinners(winner1);
+    uint32[][] memory prizeIndices = newPrizeIndices(2, 1);
+    mockPrizePool(1, -100, 0);
+    mockClaimPrizes(
+      1,
+      winners,
+      prizeIndices,
+      uint96(UNSOLD_100_SECONDS_IN_FEE),
+      address(this),
+      100
+    );
+    vm.expectRevert(abi.encodeWithSelector(ClaimArraySizeMismatch.selector, 1, 2));
+    claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this));
+  }
+
+  function testClaimPrizes_arrayMismatchLt() public {
+    // prize indices lt winners
+    address[] memory winners = newWinners(winner1, winner2);
+    uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
+    mockPrizePool(1, -100, 0);
+    mockClaimPrizes(
+      1,
+      winners,
+      prizeIndices,
+      uint96(UNSOLD_100_SECONDS_IN_FEE),
+      address(this),
+      100
+    );
+    vm.expectRevert(abi.encodeWithSelector(ClaimArraySizeMismatch.selector, 2, 1));
+    claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this));
   }
 
   function testComputeTotalFees_zero() public {
