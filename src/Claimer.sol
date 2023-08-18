@@ -6,6 +6,7 @@ import { UD2x18 } from "prb-math/UD2x18.sol";
 import { UD60x18 } from "prb-math/UD60x18.sol";
 import { PrizePool } from "pt-v5-prize-pool/PrizePool.sol";
 import { Multicall } from "openzeppelin/utils/Multicall.sol";
+import { SafeCast } from "openzeppelin/utils/math/SafeCast.sol";
 
 import { LinearVRGDALib } from "./libraries/LinearVRGDALib.sol";
 import { Vault } from "pt-v5-vault/Vault.sol";
@@ -20,10 +21,26 @@ error ClaimArraySizeMismatch(uint256 winnersLength, uint256 prizeIndicesLength);
 /// @param maxFee The maximum fee passed
 error MinFeeGeMax(uint256 minFee, uint256 maxFee);
 
+/// @notice Emitted when the VRGDA fee is below the minimum fee
+/// @param minFee The minimum fee requested by the user
+/// @param fee The actual VRGDA fee
+error VrgdaClaimFeeBelowMin(uint256 minFee, uint256 fee);
+
 /// @title Variable Rate Gradual Dutch Auction (VRGDA) Claimer
 /// @author PoolTogether Inc. Team
 /// @notice This contract uses a variable rate gradual dutch auction to inventivize prize claims on behalf of others
 contract Claimer is Multicall {
+
+  /// @notice Emitted when a prize has already been claimed
+  /// @param winner The winner of the prize
+  /// @param tier The prize tier
+  /// @param prizeIndex The prize index
+  event AlreadyClaimed(
+    address winner,
+    uint8 tier,
+    uint32 prizeIndex
+  );
+
   /// @notice The Prize Pool that this Claimer is claiming prizes for
   PrizePool public immutable prizePool;
 
@@ -64,39 +81,99 @@ contract Claimer is Multicall {
   }
 
   /// @notice Allows the call to claim prizes on behalf of others.
-  /// @param vault The vault to claim from
-  /// @param tier The tier to claim for
-  /// @param winners The array of winners to claim for
-  /// @param prizeIndices The array of prize indices to claim for each winner (length should match winners)
+  /// @param _vault The vault to claim from
+  /// @param _tier The tier to claim for
+  /// @param _winners The array of winners to claim for
+  /// @param _prizeIndices The array of prize indices to claim for each winner (length should match winners)
   /// @param _feeRecipient The address to receive the claim fees
+  /// @param _minVrgdaFeePerClaim The minimum fee for each claim
   /// @return totalFees The total fees collected across all successful claims
   function claimPrizes(
-    Vault vault,
-    uint8 tier,
-    address[] calldata winners,
-    uint32[][] calldata prizeIndices,
-    address _feeRecipient
+    Vault _vault,
+    uint8 _tier,
+    address[] calldata _winners,
+    uint32[][] calldata _prizeIndices,
+    address _feeRecipient,
+    uint256 _minVrgdaFeePerClaim
   ) external returns (uint256 totalFees) {
     if (winners.length != prizeIndices.length) {
       revert ClaimArraySizeMismatch(winners.length, prizeIndices.length);
     }
 
-    uint256 claimCount;
-    for (uint i = 0; i < winners.length; i++) {
-      claimCount += prizeIndices[i].length;
+    uint96 feePerClaim = SafeCast.toUint96(_computeFeePerClaimForBatch(_tier, _winners, _prizeIndices));
+
+    if (feePerClaim < _minVrgdaFeePerClaim) {
+      revert VrgdaClaimFeeBelowMin(_minVrgdaFeePerClaim, feePerClaim);
     }
 
-    uint96 feePerClaim = uint96(
-      _computeFeePerClaim(
-        _computeMaxFee(tier, prizePool.numberOfTiers()),
-        claimCount,
-        prizePool.claimCount()
-      )
+    return feePerClaim * _claim(
+      _vault,
+      _tier,
+      _winners,
+      _prizeIndices,
+      _feeRecipient,
+      feePerClaim
     );
+  }
 
-    vault.claimPrizes(tier, winners, prizeIndices, feePerClaim, _feeRecipient);
+  /// @notice Computes the fee per claim given a batch of winners and prize indices
+  /// @param _tier The tier the claims are for
+  /// @param _winners The array of winners to claim for
+  /// @param _prizeIndices The array of prize indices to claim for each winner (length should match winners)
+  /// @return The fee per claim
+  function _computeFeePerClaimForBatch(
+    uint8 _tier,
+    address[] calldata _winners,
+    uint32[][] calldata _prizeIndices
+  ) internal view returns (uint256) {
+    uint256 claimCount;
+    uint length = _winners.length;
+    for (uint i = 0; i < length; i++) {
+      claimCount += _prizeIndices[i].length;
+    }
 
-    return feePerClaim * claimCount;
+    return _computeFeePerClaim(
+      _computeMaxFee(_tier, prizePool.numberOfTiers()),
+      claimCount,
+      prizePool.claimCount()
+    );
+  }
+
+  /// @notice Claims prizes for a batch of winners and prize indices
+  /// @param _vault The vault to claim from
+  /// @param _tier The tier to claim for
+  /// @param _winners The array of winners to claim for
+  /// @param _prizeIndices The array of prize indices to claim for each winner (length should match winners)
+  /// @param _feeRecipient The address to receive the claim fees
+  /// @param _feePerClaim The fee to charge for each claim
+  /// @return The number of claims that were successful
+  function _claim(
+    Vault _vault,
+    uint8 _tier,
+    address[] calldata _winners,
+    uint32[][] calldata _prizeIndices,
+    address _feeRecipient,
+    uint96 _feePerClaim
+  ) internal returns (uint256) {
+    uint256 actualClaimCount;
+    uint256 winnersLength = _winners.length;
+    for (uint256 w = 0; w < winnersLength; w++) {
+      uint256 prizeIndicesLength = _prizeIndices[w].length;
+      for (uint256 p = 0; p < prizeIndicesLength; p++) {
+        if (0 != _vault.claimPrize(
+          _winners[w],
+          _tier,
+          _prizeIndices[w][p],
+          _feePerClaim,
+          _feeRecipient
+        )) {
+          actualClaimCount++;
+        } else {
+          emit AlreadyClaimed(_winners[w], _tier, _prizeIndices[w][p]);
+        }
+      }
+    }
+    return actualClaimCount;
   }
 
   /// @notice Computes the total fees for the given number of claims.
