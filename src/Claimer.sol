@@ -96,8 +96,8 @@ contract Claimer is Multicall {
     address _feeRecipient,
     uint256 _minVrgdaFeePerClaim
   ) external returns (uint256 totalFees) {
-    if (winners.length != prizeIndices.length) {
-      revert ClaimArraySizeMismatch(winners.length, prizeIndices.length);
+    if (_winners.length != _prizeIndices.length) {
+      revert ClaimArraySizeMismatch(_winners.length, _prizeIndices.length);
     }
 
     uint96 feePerClaim = SafeCast.toUint96(_computeFeePerClaimForBatch(_tier, _winners, _prizeIndices));
@@ -133,7 +133,7 @@ contract Claimer is Multicall {
     }
 
     return _computeFeePerClaim(
-      _computeMaxFee(_tier, prizePool.numberOfTiers()),
+      _computeMaxFee(_tier),
       claimCount,
       prizePool.claimCount()
     );

@@ -192,16 +192,16 @@ contract ClaimerTest is Test {
     address[] memory winners = newWinners(winner1);
     uint32[][] memory prizeIndices = newPrizeIndices(2, 1);
     mockPrizePool(1, -100, 0);
-    mockClaimPrizes(
+    mockClaimPrize(
       1,
-      winners,
-      prizeIndices,
+      winner1,
+      0,
       uint96(UNSOLD_100_SECONDS_IN_FEE),
       address(this),
       100
     );
     vm.expectRevert(abi.encodeWithSelector(ClaimArraySizeMismatch.selector, 1, 2));
-    claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this));
+    claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);
   }
 
   function testClaimPrizes_arrayMismatchLt() public {
@@ -209,16 +209,24 @@ contract ClaimerTest is Test {
     address[] memory winners = newWinners(winner1, winner2);
     uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
     mockPrizePool(1, -100, 0);
-    mockClaimPrizes(
+    mockClaimPrize(
       1,
-      winners,
-      prizeIndices,
+      winner1,
+      0,
+      uint96(UNSOLD_100_SECONDS_IN_FEE),
+      address(this),
+      100
+    );
+    mockClaimPrize(
+      1,
+      winner2,
+      0,
       uint96(UNSOLD_100_SECONDS_IN_FEE),
       address(this),
       100
     );
     vm.expectRevert(abi.encodeWithSelector(ClaimArraySizeMismatch.selector, 2, 1));
-    claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this));
+    claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);
   }
 
   function testComputeTotalFees_zero() public {
