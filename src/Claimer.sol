@@ -44,7 +44,7 @@ contract Claimer is Multicall {
   /// @notice The Prize Pool that this Claimer is claiming prizes for
   PrizePool public immutable prizePool;
 
-  /// @notice The maximum fee that can be charged as a portion of the smallest prize size. Fixed point 18 number
+  /// @notice The maximum fee that can be charged as a portion of the prize size. Fixed point 18 number
   UD2x18 public immutable maxFeePortionOfPrize;
 
   /// @notice The VRGDA decay constant computed in the constructor
