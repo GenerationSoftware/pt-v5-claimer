@@ -3,7 +3,7 @@ pragma solidity 0.8.19;
 
 import { UD2x18, ud2x18 } from "prb-math/UD2x18.sol";
 import { SD59x18, convert, E } from "prb-math/SD59x18.sol";
-import { wadExp, wadLn, wadMul, unsafeWadMul, toWadUnsafe, unsafeWadDiv, wadDiv } from "solmate/utils/SignedWadMath.sol";
+import { wadExp, wadLn, wadMul, unsafeWadMul, wadDiv } from "solmate/utils/SignedWadMath.sol";
 
 /// @title Linear Variable Rate Gradual Dutch Auction
 /// @author Brendan Asselstine <brendan@pooltogether.com>
