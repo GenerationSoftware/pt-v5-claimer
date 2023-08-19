@@ -44,7 +44,7 @@ contract Claimer is Multicall {
   /// @notice The Prize Pool that this Claimer is claiming prizes for
   PrizePool public immutable prizePool;
 
-  /// @notice The maximum fee that can be charged as a portion of the smallest prize size. Fixed point 18 number
+  /// @notice The maximum fee that can be charged as a portion of the prize size. Fixed point 18 number
   UD2x18 public immutable maxFeePortionOfPrize;
 
   /// @notice The VRGDA decay constant computed in the constructor
@@ -60,7 +60,7 @@ contract Claimer is Multicall {
   /// @param _minimumFee The minimum fee that should be charged
   /// @param _maximumFee The maximum fee that should be charged
   /// @param _timeToReachMaxFee The time it should take to reach the maximum fee (for example should be the draw period in seconds)
-  /// @param _maxFeePortionOfPrize The maximum fee that can be charged as a portion of the smallest prize size. Fixed point 18 number
+  /// @param _maxFeePortionOfPrize The maximum fee that can be charged as a portion of the prize size. Fixed point 18 number
   constructor(
     PrizePool _prizePool,
     uint256 _minimumFee,
@@ -96,8 +96,8 @@ contract Claimer is Multicall {
     address _feeRecipient,
     uint256 _minVrgdaFeePerClaim
   ) external returns (uint256 totalFees) {
-    if (winners.length != prizeIndices.length) {
-      revert ClaimArraySizeMismatch(winners.length, prizeIndices.length);
+    if (_winners.length != _prizeIndices.length) {
+      revert ClaimArraySizeMismatch(_winners.length, _prizeIndices.length);
     }
 
     uint96 feePerClaim = SafeCast.toUint96(_computeFeePerClaimForBatch(_tier, _winners, _prizeIndices));
@@ -133,7 +133,7 @@ contract Claimer is Multicall {
     }
 
     return _computeFeePerClaim(
-      _computeMaxFee(_tier, prizePool.numberOfTiers()),
+      _computeMaxFee(_tier),
       claimCount,
       prizePool.claimCount()
     );
@@ -183,7 +183,7 @@ contract Claimer is Multicall {
   function computeTotalFees(uint8 _tier, uint _claimCount) external view returns (uint256) {
     return
       _computeFeePerClaim(
-        _computeMaxFee(_tier, prizePool.numberOfTiers()),
+        _computeMaxFee(_tier),
         _claimCount,
         prizePool.claimCount()
       ) * _claimCount;
@@ -201,7 +201,7 @@ contract Claimer is Multicall {
   ) external view returns (uint256) {
     return
       _computeFeePerClaim(
-        _computeMaxFee(_tier, prizePool.numberOfTiers()),
+        _computeMaxFee(_tier),
         _claimCount,
         _claimedCount
       ) * _claimCount;
@@ -253,29 +253,14 @@ contract Claimer is Multicall {
   /// @param _tier The tier to compute the max fee for
   /// @return The maximum fee that can be charged
   function computeMaxFee(uint8 _tier) public view returns (uint256) {
-    return _computeMaxFee(_tier, prizePool.numberOfTiers());
+    return _computeMaxFee(_tier);
   }
 
-  /// @notice Computes the max fee given the tier and number of tiers.
+  /// @notice Computes the max fee given the tier
   /// @param _tier The tier to compute the max fee for
-  /// @param _numTiers The total number of tiers
   /// @return The maximum fee that will be charged for a prize claim for the given tier
-  function _computeMaxFee(uint8 _tier, uint8 _numTiers) internal view returns (uint256) {
-    uint8 _canaryTier = _numTiers - 1;
-    if (_tier != _canaryTier) {
-      // canary tier
-      return _computeMaxFee(prizePool.getTierPrizeSize(_canaryTier - 1));
-    } else {
-      return _computeMaxFee(prizePool.getTierPrizeSize(_canaryTier));
-    }
-  }
-
-  /// @notice Computes the maximum fee that can be charged.
-  /// @param _prize The prize to compute the max fee for
-  /// @return The maximum fee that can be charged
-  function _computeMaxFee(uint256 _prize) internal view returns (uint256) {
-    // compute the maximum fee that can be charged
-    return UD60x18.unwrap(maxFeePortionOfPrize.intoUD60x18().mul(UD60x18.wrap(_prize)));
+  function _computeMaxFee(uint8 _tier) internal view returns (uint256) {
+    return UD60x18.unwrap(maxFeePortionOfPrize.intoUD60x18().mul(UD60x18.wrap(prizePool.getTierPrizeSize(_tier))));
   }
 
   /// @notice Computes the fee for the next claim.
