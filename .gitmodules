@@ -8,6 +8,7 @@
 [submodule "lib/prb-math"]
 	path = lib/prb-math
 	url = https://github.com/PaulRBerg/prb-math
+	branch = release-v4
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/openzeppelin/openzeppelin-contracts
@@ -15,3 +16,4 @@
 [submodule "lib/pt-v5-vault"]
 	path = lib/pt-v5-vault
 	url = https://github.com/GenerationSoftware/pt-v5-vault
+	branch = prod-deploy-1
