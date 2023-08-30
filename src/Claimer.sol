@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
+import "forge-std/console2.sol";
+
 import { SD59x18 } from "prb-math/SD59x18.sol";
 import { UD2x18 } from "prb-math/UD2x18.sol";
 import { UD60x18 } from "prb-math/UD60x18.sol";
@@ -39,6 +41,20 @@ contract Claimer is Multicall {
     address winner,
     uint8 tier,
     uint32 prizeIndex
+  );
+
+  /// @notice Emitted when a claim reverts
+  /// @param vault The vault for which the claim failed
+  /// @param tier The tier for which the claim failed
+  /// @param winner The winner for which the claim failed
+  /// @param prizeIndex The prize index for which the claim failed
+  /// @param reason The revert reason
+  event ClaimError(
+    Vault indexed vault,
+    uint8 indexed tier,
+    address indexed winner,
+    uint32 prizeIndex,
+    bytes reason
   );
 
   /// @notice The Prize Pool that this Claimer is claiming prizes for
@@ -156,20 +172,23 @@ contract Claimer is Multicall {
     uint96 _feePerClaim
   ) internal returns (uint256) {
     uint256 actualClaimCount;
-    uint256 winnersLength = _winners.length;
-    for (uint256 w = 0; w < winnersLength; w++) {
+    for (uint256 w = 0; w < _winners.length; w++) {
       uint256 prizeIndicesLength = _prizeIndices[w].length;
       for (uint256 p = 0; p < prizeIndicesLength; p++) {
-        if (0 != _vault.claimPrize(
+        try _vault.claimPrize(
           _winners[w],
           _tier,
           _prizeIndices[w][p],
           _feePerClaim,
           _feeRecipient
-        )) {
-          actualClaimCount++;
-        } else {
-          emit AlreadyClaimed(_winners[w], _tier, _prizeIndices[w][p]);
+        ) returns (uint256 prizeSize) {
+          if (0 != prizeSize) {
+            actualClaimCount++;
+          } else {
+            emit AlreadyClaimed(_winners[w], _tier, _prizeIndices[w][p]);
+          }
+        } catch (bytes memory reason) {
+          emit ClaimError(_vault, _tier, _winners[w], _prizeIndices[w][p], reason);
         }
       }
     }

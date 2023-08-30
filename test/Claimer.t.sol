@@ -25,6 +25,14 @@ contract ClaimerTest is Test {
     uint32 prizeIndex
   );
 
+  event ClaimError(
+    Vault indexed vault,
+    uint8 indexed tier,
+    address indexed winner,
+    uint32 prizeIndex,
+    bytes reason
+  );
+
   uint256 public constant MINIMUM_FEE = 0.0001e18;
   uint256 public constant MAXIMUM_FEE = 1000e18;
   uint256 public constant TIME_TO_REACH_MAX = 86400;
@@ -88,6 +96,31 @@ contract ClaimerTest is Test {
       TIME_TO_REACH_MAX,
       ud2x18(MAX_FEE_PERCENTAGE_OF_PRIZE)
     );
+  }
+
+  function testClaimPrizes_ClaimError() public {
+    address[] memory winners = newWinners(winner1);
+    uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
+    mockPrizePool(1, -100, 0);
+    
+    vm.mockCallRevert(
+      address(vault),
+      abi.encodeCall(
+        vault.claimPrize,
+        (winner1, 1, 0, 100254032882995, address(this))
+      ),
+      "errrooooor"
+    );
+
+    vm.expectEmit(true,true,true,true);
+    emit ClaimError(
+      vault,
+      1,
+      winner1,
+      0,
+      "errrooooor"
+    );
+    claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);
   }
 
   function testClaimPrizes_single() public {
