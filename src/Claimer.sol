@@ -141,8 +141,8 @@ contract Claimer is Multicall {
     uint32[][] calldata _prizeIndices
   ) internal view returns (uint256) {
     uint256 claimCount;
-    uint length = _winners.length;
-    for (uint i = 0; i < length; i++) {
+    uint256 length = _winners.length;
+    for (uint256 i = 0; i < length; i++) {
       claimCount += _prizeIndices[i].length;
     }
 
@@ -197,7 +197,7 @@ contract Claimer is Multicall {
   /// @param _tier The tier to claim prizes from
   /// @param _claimCount The number of claims
   /// @return The total fees for those claims
-  function computeTotalFees(uint8 _tier, uint _claimCount) external view returns (uint256) {
+  function computeTotalFees(uint8 _tier, uint256 _claimCount) external view returns (uint256) {
     return
       _computeFeePerClaim(
         _computeMaxFee(_tier),
@@ -213,8 +213,8 @@ contract Claimer is Multicall {
   /// @return The total fees for those claims
   function computeTotalFees(
     uint8 _tier,
-    uint _claimCount,
-    uint _claimedCount
+    uint256 _claimCount,
+    uint256 _claimedCount
   ) external view returns (uint256) {
     return
       _computeFeePerClaim(
@@ -228,7 +228,7 @@ contract Claimer is Multicall {
   /// @param _maxFee the maximum fee that can be charged
   /// @param _claimCount the number of claims to check
   /// @return The fees for the claims
-  function computeFeePerClaim(uint256 _maxFee, uint _claimCount) external view returns (uint256) {
+  function computeFeePerClaim(uint256 _maxFee, uint256 _claimCount) external view returns (uint256) {
     return _computeFeePerClaim(_maxFee, _claimCount, prizePool.claimCount());
   }
 
@@ -239,8 +239,8 @@ contract Claimer is Multicall {
   /// @return The total fees for the claims
   function _computeFeePerClaim(
     uint256 _maxFee,
-    uint _claimCount,
-    uint _claimedCount
+    uint256 _claimCount,
+    uint256 _claimedCount
   ) internal view returns (uint256) {
     if (_claimCount == 0) {
       return 0;
@@ -252,7 +252,7 @@ contract Claimer is Multicall {
     uint256 elapsed = block.timestamp - (prizePool.lastClosedDrawAwardedAt());
     uint256 fee;
 
-    for (uint i = 0; i < _claimCount; i++) {
+    for (uint256 i = 0; i < _claimCount; i++) {
       fee += _computeFeeForNextClaim(
         minimumFee,
         decayConstant,
