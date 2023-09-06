@@ -26,6 +26,9 @@ error MinFeeGeMax(uint256 minFee, uint256 maxFee);
 /// @param fee The actual VRGDA fee
 error VrgdaClaimFeeBelowMin(uint256 minFee, uint256 fee);
 
+/// @notice Emitted when the prize pool is set the the zero address
+error PrizePoolZeroAddress();
+
 /// @title Variable Rate Gradual Dutch Auction (VRGDA) Claimer
 /// @author PoolTogether Inc. Team
 /// @notice This contract uses a variable rate gradual dutch auction to inventivize prize claims on behalf of others
@@ -82,6 +85,9 @@ contract Claimer is Multicall {
     uint256 _timeToReachMaxFee,
     UD2x18 _maxFeePortionOfPrize
   ) {
+    if (address(0) == address(_prizePool)) {
+      revert PrizePoolZeroAddress();
+    }
     if (_minimumFee >= _maximumFee) {
       revert MinFeeGeMax(_minimumFee, _maximumFee);
     }

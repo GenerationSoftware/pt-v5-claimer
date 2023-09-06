@@ -6,7 +6,8 @@ import "forge-std/Test.sol";
 import {
   Claimer,
   MinFeeGeMax,
-  VrgdaClaimFeeBelowMin
+  VrgdaClaimFeeBelowMin,
+  PrizePoolZeroAddress
 } from "../src/Claimer.sol";
 import { UD2x18, ud2x18 } from "prb-math/UD2x18.sol";
 import { SD59x18 } from "prb-math/SD59x18.sol";
@@ -85,6 +86,17 @@ contract ClaimerTest is Test {
     assertEq(address(claimer.prizePool()), address(prizePool));
     assertEq(claimer.minimumFee(), MINIMUM_FEE);
     assertEq(claimer.decayConstant().unwrap(), decayConstant.unwrap());
+  }
+
+  function testConstructor_PrizePoolZeroAddress() public {
+    vm.expectRevert(abi.encodeWithSelector(PrizePoolZeroAddress.selector));
+    new Claimer(
+      PrizePool(address(0)), // zero address
+      MINIMUM_FEE,
+      MAXIMUM_FEE,
+      TIME_TO_REACH_MAX,
+      ud2x18(MAX_FEE_PERCENTAGE_OF_PRIZE)
+    );
   }
 
   function testConstructor_MinFeeGeMax() public {
