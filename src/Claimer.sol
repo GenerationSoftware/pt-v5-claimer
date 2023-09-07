@@ -162,10 +162,11 @@ contract Claimer is Multicall {
     uint96 _feePerClaim
   ) internal returns (uint256) {
     uint256 actualClaimCount;
+    uint256 prizeIndicesLength;
 
     // `_winners.length` is not cached cause via-ir would need to be used
     for (uint256 w = 0; w < _winners.length; w++) {
-      uint256 prizeIndicesLength = _prizeIndices[w].length;
+      prizeIndicesLength = _prizeIndices[w].length;
       for (uint256 p = 0; p < prizeIndicesLength; p++) {
         try
           _vault.claimPrize(_winners[w], _tier, _prizeIndices[w][p], _feePerClaim, _feeRecipient)
