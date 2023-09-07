@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import { UD2x18, ud2x18 } from "prb-math/UD2x18.sol";
 import { SD59x18, convert, E } from "prb-math/SD59x18.sol";
 import { wadExp, wadLn, wadMul, unsafeWadMul, wadDiv } from "solmate/utils/SignedWadMath.sol";
+import { SafeCast } from "openzeppelin/utils/math/SafeCast.sol";
 
 /// @title Linear Variable Rate Gradual Dutch Auction
 /// @author Brendan Asselstine <brendan@pooltogether.com>
@@ -104,9 +105,9 @@ library LinearVRGDALib {
     uint256 _maxFee,
     uint256 _time
   ) internal pure returns (UD2x18) {
-    int256 div = wadDiv(int256(_maxFee), int256(_minFee));
+    int256 div = wadDiv(SafeCast.toInt256(_maxFee), SafeCast.toInt256(_minFee));
     int256 ln = wadLn(div);
-    int256 maxDiv = wadDiv(ln, int256(_time));
-    return ud2x18(uint64(uint256(wadExp(maxDiv / 1e18))));
+    int256 maxDiv = wadDiv(ln, SafeCast.toInt256(_time));
+    return ud2x18(SafeCast.toUint64(uint256(wadExp(maxDiv / 1e18))));
   }
 }
