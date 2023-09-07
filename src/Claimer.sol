@@ -33,16 +33,11 @@ error PrizePoolZeroAddress();
 /// @author PoolTogether Inc. Team
 /// @notice This contract uses a variable rate gradual dutch auction to inventivize prize claims on behalf of others
 contract Claimer is Multicall {
-
   /// @notice Emitted when a prize has already been claimed
   /// @param winner The winner of the prize
   /// @param tier The prize tier
   /// @param prizeIndex The prize index
-  event AlreadyClaimed(
-    address winner,
-    uint8 tier,
-    uint32 prizeIndex
-  );
+  event AlreadyClaimed(address winner, uint8 tier, uint32 prizeIndex);
 
   /// @notice Emitted when a claim reverts
   /// @param vault The vault for which the claim failed
@@ -120,20 +115,15 @@ contract Claimer is Multicall {
       revert ClaimArraySizeMismatch(_winners.length, _prizeIndices.length);
     }
 
-    uint96 feePerClaim = SafeCast.toUint96(_computeFeePerClaimForBatch(_tier, _winners, _prizeIndices));
+    uint96 feePerClaim = SafeCast.toUint96(
+      _computeFeePerClaimForBatch(_tier, _winners, _prizeIndices)
+    );
 
     if (feePerClaim < _minVrgdaFeePerClaim) {
       revert VrgdaClaimFeeBelowMin(_minVrgdaFeePerClaim, feePerClaim);
     }
 
-    return feePerClaim * _claim(
-      _vault,
-      _tier,
-      _winners,
-      _prizeIndices,
-      _feeRecipient,
-      feePerClaim
-    );
+    return feePerClaim * _claim(_vault, _tier, _winners, _prizeIndices, _feeRecipient, feePerClaim);
   }
 
   /// @notice Computes the fee per claim given a batch of winners and prize indices
@@ -152,11 +142,7 @@ contract Claimer is Multicall {
       claimCount += _prizeIndices[i].length;
     }
 
-    return _computeFeePerClaim(
-      _computeMaxFee(_tier),
-      claimCount,
-      prizePool.claimCount()
-    );
+    return _computeFeePerClaim(_computeMaxFee(_tier), claimCount, prizePool.claimCount());
   }
 
   /// @notice Claims prizes for a batch of winners and prize indices
@@ -176,16 +162,14 @@ contract Claimer is Multicall {
     uint96 _feePerClaim
   ) internal returns (uint256) {
     uint256 actualClaimCount;
+
+    // `_winners.length` is not cached cause via-ir would need to be used
     for (uint256 w = 0; w < _winners.length; w++) {
       uint256 prizeIndicesLength = _prizeIndices[w].length;
       for (uint256 p = 0; p < prizeIndicesLength; p++) {
-        try _vault.claimPrize(
-          _winners[w],
-          _tier,
-          _prizeIndices[w][p],
-          _feePerClaim,
-          _feeRecipient
-        ) returns (uint256 prizeSize) {
+        try
+          _vault.claimPrize(_winners[w], _tier, _prizeIndices[w][p], _feePerClaim, _feeRecipient)
+        returns (uint256 prizeSize) {
           if (0 != prizeSize) {
             actualClaimCount++;
           } else {
@@ -196,6 +180,7 @@ contract Claimer is Multicall {
         }
       }
     }
+
     return actualClaimCount;
   }
 
@@ -205,11 +190,7 @@ contract Claimer is Multicall {
   /// @return The total fees for those claims
   function computeTotalFees(uint8 _tier, uint256 _claimCount) external view returns (uint256) {
     return
-      _computeFeePerClaim(
-        _computeMaxFee(_tier),
-        _claimCount,
-        prizePool.claimCount()
-      ) * _claimCount;
+      _computeFeePerClaim(_computeMaxFee(_tier), _claimCount, prizePool.claimCount()) * _claimCount;
   }
 
   /// @notice Computes the total fees for the given number of claims if a number of claims have already been made.
@@ -222,19 +203,18 @@ contract Claimer is Multicall {
     uint256 _claimCount,
     uint256 _claimedCount
   ) external view returns (uint256) {
-    return
-      _computeFeePerClaim(
-        _computeMaxFee(_tier),
-        _claimCount,
-        _claimedCount
-      ) * _claimCount;
+    return _computeFeePerClaim(_computeMaxFee(_tier), _claimCount, _claimedCount) * _claimCount;
   }
 
   /// @notice Computes the fees for several claims.
   /// @param _maxFee the maximum fee that can be charged
   /// @param _claimCount the number of claims to check
   /// @return The fees for the claims
-  function computeFeePerClaim(uint256 _maxFee, uint256 _claimCount) external view returns (uint256) {
+  function computeFeePerClaim(uint256 _maxFee, uint256 _claimCount)
+    external
+    view
+    returns (uint256)
+  {
     return _computeFeePerClaim(_maxFee, _claimCount, prizePool.claimCount());
   }
 
@@ -283,7 +263,10 @@ contract Claimer is Multicall {
   /// @param _tier The tier to compute the max fee for
   /// @return The maximum fee that will be charged for a prize claim for the given tier
   function _computeMaxFee(uint8 _tier) internal view returns (uint256) {
-    return UD60x18.unwrap(maxFeePortionOfPrize.intoUD60x18().mul(UD60x18.wrap(prizePool.getTierPrizeSize(_tier))));
+    return
+      UD60x18.unwrap(
+        maxFeePortionOfPrize.intoUD60x18().mul(UD60x18.wrap(prizePool.getTierPrizeSize(_tier)))
+      );
   }
 
   /// @notice Computes the fee for the next claim.
