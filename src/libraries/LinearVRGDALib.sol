@@ -36,7 +36,7 @@ library LinearVRGDALib {
   /// @param _perTimeUnit The target number of claims to sell per second
   /// @param _decayConstant The decay constant for the VRGDA formula
   /// @return The price of a token according to VRGDA, scaled by 1e18
-  /// @dev This function has some cases where some calculations might overflow. If an overflow will occur and the calculation would have resulted in a high price, then the max uint value is returned. If an overflow would happen where a low price would be returned, then zero is returned.
+  /// @dev This function has some cases where some calculations might overflow. If an overflow will occur and the calculation would have resulted in a high price, then the max uint256 value is returned. If an overflow would happen where a low price would be returned, then zero is returned.
   function getVRGDAPrice(
     uint256 _targetPrice,
     uint256 _timeSinceStart,
@@ -79,13 +79,13 @@ library LinearVRGDALib {
 
       // If exponential result is greater than 1, then don't worry about extra precision to avoid extra risk of overflow
       if (expResult > 1e18) {
-        // Check if multiplication will overflow and return max uint if it will.
+        // Check if multiplication will overflow and return max uint256 if it will.
         if (targetPriceInt > type(int256).max / expResult) {
           return type(uint256).max;
         }
         return uint256(unsafeWadMul(targetPriceInt, expResult));
       } else {
-        // Check if multiplication will overflow and return max uint if it will.
+        // Check if multiplication will overflow and return max uint256 if it will.
         int256 extraPrecisionExpResult = int128(expResult * 1e18);
         if (targetPriceInt > type(int256).max / extraPrecisionExpResult) {
           return type(uint256).max;
