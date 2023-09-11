@@ -1,14 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.8.17;
+pragma solidity >=0.8.19;
 
 import "forge-std/Test.sol";
 
-import {
-  Claimer,
-  MinFeeGeMax,
-  VrgdaClaimFeeBelowMin,
-  PrizePoolZeroAddress
-} from "../src/Claimer.sol";
+import { Claimer, MinFeeGeMax, VrgdaClaimFeeBelowMin, PrizePoolZeroAddress } from "../src/Claimer.sol";
 import { UD2x18, ud2x18 } from "prb-math/UD2x18.sol";
 import { SD59x18 } from "prb-math/SD59x18.sol";
 
@@ -19,12 +14,7 @@ import { LinearVRGDALib } from "../src/libraries/LinearVRGDALib.sol";
 error ClaimArraySizeMismatch(uint256 winnersLength, uint256 prizeIndicesLength);
 
 contract ClaimerTest is Test {
-  
-  event AlreadyClaimed(
-    address winner,
-    uint8 tier,
-    uint32 prizeIndex
-  );
+  event AlreadyClaimed(address winner, uint8 tier, uint32 prizeIndex);
 
   event ClaimError(
     Vault indexed vault,
@@ -101,37 +91,22 @@ contract ClaimerTest is Test {
 
   function testConstructor_MinFeeGeMax() public {
     vm.expectRevert(abi.encodeWithSelector(MinFeeGeMax.selector, 1e18, 0.5e18));
-    new Claimer(
-      prizePool,
-      1e18,
-      0.5e18,
-      TIME_TO_REACH_MAX,
-      ud2x18(MAX_FEE_PERCENTAGE_OF_PRIZE)
-    );
+    new Claimer(prizePool, 1e18, 0.5e18, TIME_TO_REACH_MAX, ud2x18(MAX_FEE_PERCENTAGE_OF_PRIZE));
   }
 
   function testClaimPrizes_ClaimError() public {
     address[] memory winners = newWinners(winner1);
     uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
     mockPrizePool(1, -100, 0);
-    
+
     vm.mockCallRevert(
       address(vault),
-      abi.encodeCall(
-        vault.claimPrize,
-        (winner1, 1, 0, 100254032882995, address(this))
-      ),
+      abi.encodeCall(vault.claimPrize, (winner1, 1, 0, 100254032882995, address(this))),
       "errrooooor"
     );
 
-    vm.expectEmit(true,true,true,true);
-    emit ClaimError(
-      vault,
-      1,
-      winner1,
-      0,
-      "errrooooor"
-    );
+    vm.expectEmit(true, true, true, true);
+    emit ClaimError(vault, 1, winner1, 0, "errrooooor");
     claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);
   }
 
@@ -139,14 +114,7 @@ contract ClaimerTest is Test {
     address[] memory winners = newWinners(winner1);
     uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
     mockPrizePool(1, -100, 0);
-    mockClaimPrize(
-      1,
-      winner1,
-      0,
-      uint96(UNSOLD_100_SECONDS_IN_FEE),
-      address(this),
-      100
-    );
+    mockClaimPrize(1, winner1, 0, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 100);
     uint256 totalFees = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);
     assertEq(totalFees, UNSOLD_100_SECONDS_IN_FEE, "Total fees");
   }
@@ -179,15 +147,10 @@ contract ClaimerTest is Test {
     address[] memory winners = newWinners(winner1);
     uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
     mockPrizePool(1, -100, 0);
-    mockClaimPrize(
-      1,
-      winner1,
-      0,
-      uint96(UNSOLD_100_SECONDS_IN_FEE),
-      address(this),
-      100
+    mockClaimPrize(1, winner1, 0, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 100);
+    vm.expectRevert(
+      abi.encodeWithSelector(VrgdaClaimFeeBelowMin.selector, 100e18, UNSOLD_100_SECONDS_IN_FEE)
     );
-    vm.expectRevert(abi.encodeWithSelector(VrgdaClaimFeeBelowMin.selector, 100e18, UNSOLD_100_SECONDS_IN_FEE));
     assertEq(claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 100e18), 0);
   }
 
@@ -195,20 +158,9 @@ contract ClaimerTest is Test {
     address[] memory winners = newWinners(winner1);
     uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
     mockPrizePool(1, -100, 0);
-    mockClaimPrize(
-      1,
-      winner1,
-      0,
-      uint96(UNSOLD_100_SECONDS_IN_FEE),
-      address(this),
-      0
-    );
-    vm.expectEmit(true,true,true,true);
-    emit AlreadyClaimed(
-      winner1,
-      1,
-      0
-    );
+    mockClaimPrize(1, winner1, 0, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 0);
+    vm.expectEmit(true, true, true, true);
+    emit AlreadyClaimed(winner1, 1, 0);
     assertEq(claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0), 0);
   }
 
@@ -237,14 +189,7 @@ contract ClaimerTest is Test {
     address[] memory winners = newWinners(winner1);
     uint32[][] memory prizeIndices = newPrizeIndices(2, 1);
     mockPrizePool(1, -100, 0);
-    mockClaimPrize(
-      1,
-      winner1,
-      0,
-      uint96(UNSOLD_100_SECONDS_IN_FEE),
-      address(this),
-      100
-    );
+    mockClaimPrize(1, winner1, 0, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 100);
     vm.expectRevert(abi.encodeWithSelector(ClaimArraySizeMismatch.selector, 1, 2));
     claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);
   }
@@ -254,22 +199,8 @@ contract ClaimerTest is Test {
     address[] memory winners = newWinners(winner1, winner2);
     uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
     mockPrizePool(1, -100, 0);
-    mockClaimPrize(
-      1,
-      winner1,
-      0,
-      uint96(UNSOLD_100_SECONDS_IN_FEE),
-      address(this),
-      100
-    );
-    mockClaimPrize(
-      1,
-      winner2,
-      0,
-      uint96(UNSOLD_100_SECONDS_IN_FEE),
-      address(this),
-      100
-    );
+    mockClaimPrize(1, winner1, 0, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 100);
+    mockClaimPrize(1, winner2, 0, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 100);
     vm.expectRevert(abi.encodeWithSelector(ClaimArraySizeMismatch.selector, 2, 1));
     claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);
   }

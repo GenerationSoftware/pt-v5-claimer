@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity >=0.8.17;
+pragma solidity >=0.8.19;
 
 import { LinearVRGDALib } from "src/libraries/LinearVRGDALib.sol";
 import { SD59x18 } from "prb-math/SD59x18.sol";
