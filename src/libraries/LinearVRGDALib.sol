@@ -22,10 +22,11 @@ library LinearVRGDALib {
   /// @param _count The total number of claims
   /// @param _durationSeconds The duration over which claiming should occur
   /// @return The target number of claims per second
-  function getPerTimeUnit(
-    uint256 _count,
-    uint256 _durationSeconds
-  ) internal pure returns (SD59x18) {
+  function getPerTimeUnit(uint256 _count, uint256 _durationSeconds)
+    internal
+    pure
+    returns (SD59x18)
+  {
     return convert(int256(_count)).div(convert(int256(_durationSeconds)));
   }
 
@@ -105,9 +106,18 @@ library LinearVRGDALib {
     uint256 _maxFee,
     uint256 _time
   ) internal pure returns (UD2x18) {
-    int256 div = wadDiv(SafeCast.toInt256(_maxFee), SafeCast.toInt256(_minFee));
-    int256 ln = wadLn(div);
-    int256 maxDiv = wadDiv(ln, SafeCast.toInt256(_time));
-    return ud2x18(SafeCast.toUint64(uint256(wadExp(maxDiv / 1e18))));
+    return
+      ud2x18(
+        SafeCast.toUint64(
+          uint256(
+            wadExp(
+              wadDiv(
+                wadLn(wadDiv(SafeCast.toInt256(_maxFee), SafeCast.toInt256(_minFee))),
+                SafeCast.toInt256(_time)
+              ) / 1e18
+            )
+          )
+        )
+      );
   }
 }
