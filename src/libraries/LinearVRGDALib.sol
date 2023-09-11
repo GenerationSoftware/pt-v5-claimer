@@ -22,11 +22,10 @@ library LinearVRGDALib {
   /// @param _count The total number of claims
   /// @param _durationSeconds The duration over which claiming should occur
   /// @return The target number of claims per second
-  function getPerTimeUnit(uint256 _count, uint256 _durationSeconds)
-    internal
-    pure
-    returns (SD59x18)
-  {
+  function getPerTimeUnit(
+    uint256 _count,
+    uint256 _durationSeconds
+  ) internal pure returns (SD59x18) {
     return convert(int256(_count)).div(convert(int256(_durationSeconds)));
   }
 
