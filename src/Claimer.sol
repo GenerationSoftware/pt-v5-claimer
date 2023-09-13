@@ -211,11 +211,10 @@ contract Claimer is Multicall {
   /// @param _maxFee the maximum fee that can be charged
   /// @param _claimCount the number of claims to check
   /// @return The fees for the claims
-  function computeFeePerClaim(uint256 _maxFee, uint256 _claimCount)
-    external
-    view
-    returns (uint256)
-  {
+  function computeFeePerClaim(
+    uint256 _maxFee,
+    uint256 _claimCount
+  ) external view returns (uint256) {
     return _computeFeePerClaim(_maxFee, _claimCount, prizePool.claimCount());
   }
 
