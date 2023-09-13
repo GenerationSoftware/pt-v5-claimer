@@ -3,7 +3,7 @@ pragma solidity >=0.8.19;
 
 import "forge-std/Test.sol";
 
-import { Claimer, MinFeeGeMax, VrgdaClaimFeeBelowMin, PrizePoolZeroAddress } from "../src/Claimer.sol";
+import { Claimer, MinFeeGeMax, VrgdaClaimFeeBelowMin, PrizePoolZeroAddress, FeeRecipientZeroAddress } from "../src/Claimer.sol";
 import { UD2x18, ud2x18 } from "prb-math/UD2x18.sol";
 import { SD59x18 } from "prb-math/SD59x18.sol";
 
@@ -108,6 +108,15 @@ contract ClaimerTest is Test {
     vm.expectEmit(true, true, true, true);
     emit ClaimError(vault, 1, winner1, 0, "errrooooor");
     claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);
+  }
+
+  function testClaimPrizes_FeeRecipientZeroAddress() public {
+    address[] memory winners = newWinners(winner1);
+    uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
+    mockPrizePool(1, -100, 0);
+    mockClaimPrize(1, winner1, 0, uint96(UNSOLD_100_SECONDS_IN_FEE), address(0), 100);
+    vm.expectRevert(abi.encodeWithSelector(FeeRecipientZeroAddress.selector));
+    claimer.claimPrizes(vault, 1, winners, prizeIndices, address(0), 1); // zero address with non-zero min fee
   }
 
   function testClaimPrizes_single() public {
