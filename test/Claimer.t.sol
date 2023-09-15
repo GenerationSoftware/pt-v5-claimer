@@ -3,7 +3,7 @@ pragma solidity >=0.8.19;
 
 import "forge-std/Test.sol";
 
-import { Claimer, MinFeeGeMax, VrgdaClaimFeeBelowMin, PrizePoolZeroAddress } from "../src/Claimer.sol";
+import { Claimer, MinFeeGeMax, VrgdaClaimFeeBelowMin, PrizePoolZeroAddress, FeeRecipientZeroAddress } from "../src/Claimer.sol";
 import { UD2x18, ud2x18 } from "prb-math/UD2x18.sol";
 import { SD59x18 } from "prb-math/SD59x18.sol";
 
@@ -110,6 +110,15 @@ contract ClaimerTest is Test {
     claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);
   }
 
+  function testClaimPrizes_FeeRecipientZeroAddress() public {
+    address[] memory winners = newWinners(winner1);
+    uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
+    mockPrizePool(1, -100, 0);
+    mockClaimPrize(1, winner1, 0, uint96(UNSOLD_100_SECONDS_IN_FEE), address(0), 100);
+    vm.expectRevert(abi.encodeWithSelector(FeeRecipientZeroAddress.selector));
+    claimer.claimPrizes(vault, 1, winners, prizeIndices, address(0), 1); // zero address with non-zero min fee
+  }
+
   function testClaimPrizes_single() public {
     address[] memory winners = newWinners(winner1);
     uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
@@ -117,6 +126,31 @@ contract ClaimerTest is Test {
     mockClaimPrize(1, winner1, 0, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 100);
     uint256 totalFees = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);
     assertEq(totalFees, UNSOLD_100_SECONDS_IN_FEE, "Total fees");
+  }
+
+  function testClaimPrizes_singleNoFeeSavesGas() public {
+
+    // With fee
+    address[] memory winners = newWinners(winner1);
+    uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
+    mockPrizePool(1, -100, 0);
+    mockClaimPrize(1, winner1, 0, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 100);
+    uint256 gasBeforeFeeClaim = gasleft();
+    uint256 totalFees = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);
+    uint256 feeClaimGasUsed = gasBeforeFeeClaim - gasleft();
+    assertEq(totalFees, UNSOLD_100_SECONDS_IN_FEE, "Total fees");
+
+    // Without fee
+    mockPrizePool(1, -100, 0);
+    mockClaimPrize(1, winner1, 0, uint96(0), address(0), 0);
+    uint256 gasBeforeNoFeeClaim = gasleft();
+    uint256 totalNoFeeFees = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(0), 0);
+    uint256 noFeeClaimGasUsed = gasBeforeNoFeeClaim - gasleft();
+    assertEq(totalNoFeeFees, 0, "Total fees");
+
+    // Check gas
+    console2.log("no fee claim gas savings: ", feeClaimGasUsed - noFeeClaimGasUsed);
+    assertGt(feeClaimGasUsed, noFeeClaimGasUsed, "Fee / No Fee Gas Difference");
   }
 
   function testClaimPrizes_multiple() public {

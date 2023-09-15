@@ -29,6 +29,9 @@ error VrgdaClaimFeeBelowMin(uint256 minFee, uint256 fee);
 /// @notice Emitted when the prize pool is set the the zero address
 error PrizePoolZeroAddress();
 
+/// @notice Emitted when someone tries to claim a prizes with a fee, but sets the fee recipient address to the zero address.
+error FeeRecipientZeroAddress();
+
 /// @title Variable Rate Gradual Dutch Auction (VRGDA) Claimer
 /// @author PoolTogether Inc. Team
 /// @notice This contract uses a variable rate gradual dutch auction to inventivize prize claims on behalf of others
@@ -95,7 +98,9 @@ contract Claimer is Multicall {
     timeToReachMaxFee = _timeToReachMaxFee;
   }
 
-  /// @notice Allows the call to claim prizes on behalf of others.
+  /// @notice Allows the caller to claim prizes on behalf of others or for themself.
+  /// @dev If you are claiming for yourself or don't want to take a fee, set the `_feeRecipient` and
+  /// `_minVrgdaFeePerClaim` to zero. This will save some gas on fee calculation.
   /// @param _vault The vault to claim from
   /// @param _tier The tier to claim for
   /// @param _winners The array of winners to claim for
@@ -111,16 +116,27 @@ contract Claimer is Multicall {
     address _feeRecipient,
     uint256 _minVrgdaFeePerClaim
   ) external returns (uint256 totalFees) {
+    bool feeRecipientZeroAddress = address(0) == _feeRecipient;
+    if (feeRecipientZeroAddress && _minVrgdaFeePerClaim != 0) {
+      revert FeeRecipientZeroAddress();
+    }
     if (_winners.length != _prizeIndices.length) {
       revert ClaimArraySizeMismatch(_winners.length, _prizeIndices.length);
     }
 
-    uint96 feePerClaim = SafeCast.toUint96(
-      _computeFeePerClaimForBatch(_tier, _winners, _prizeIndices)
-    );
+    uint96 feePerClaim;
 
-    if (feePerClaim < _minVrgdaFeePerClaim) {
-      revert VrgdaClaimFeeBelowMin(_minVrgdaFeePerClaim, feePerClaim);
+    /**
+     * If the claimer hasn't specified both a min fee and a fee recipient, we assume that they don't
+     * expect a fee and save them some gas on the calculation.
+     */
+    if (!feeRecipientZeroAddress) {
+      feePerClaim = SafeCast.toUint96(
+        _computeFeePerClaimForBatch(_tier, _winners, _prizeIndices)
+      );
+      if (feePerClaim < _minVrgdaFeePerClaim) {
+        revert VrgdaClaimFeeBelowMin(_minVrgdaFeePerClaim, feePerClaim);
+      }
     }
 
     return feePerClaim * _claim(_vault, _tier, _winners, _prizeIndices, _feeRecipient, feePerClaim);
