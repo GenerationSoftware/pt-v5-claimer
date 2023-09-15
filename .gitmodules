@@ -17,3 +17,6 @@
 	path = lib/pt-v5-vault
 	url = https://github.com/GenerationSoftware/pt-v5-vault
 	branch = prod-deploy-1
+[submodule "lib/pt-v5-claimable-interface"]
+	path = lib/pt-v5-claimable-interface
+	url = https://github.com/GenerationSoftware/pt-v5-claimable-interface
