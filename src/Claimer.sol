@@ -9,7 +9,7 @@ import { Multicall } from "openzeppelin/utils/Multicall.sol";
 import { SafeCast } from "openzeppelin/utils/math/SafeCast.sol";
 
 import { LinearVRGDALib } from "./libraries/LinearVRGDALib.sol";
-import { Vault } from "pt-v5-vault/Vault.sol";
+import { IClaimable } from "pt-v5-claimable-interface/interfaces/IClaimable.sol";
 
 /// @notice Thrown when the length of the winners array does not match the length of the prize indices array while claiming.
 /// @param winnersLength Length of the winners array
@@ -49,7 +49,7 @@ contract Claimer is Multicall {
   /// @param prizeIndex The prize index for which the claim failed
   /// @param reason The revert reason
   event ClaimError(
-    Vault indexed vault,
+    IClaimable indexed vault,
     uint8 indexed tier,
     address indexed winner,
     uint32 prizeIndex,
@@ -109,7 +109,7 @@ contract Claimer is Multicall {
   /// @param _minVrgdaFeePerClaim The minimum fee for each claim
   /// @return totalFees The total fees collected across all successful claims
   function claimPrizes(
-    Vault _vault,
+    IClaimable _vault,
     uint8 _tier,
     address[] calldata _winners,
     uint32[][] calldata _prizeIndices,
@@ -170,7 +170,7 @@ contract Claimer is Multicall {
   /// @param _feePerClaim The fee to charge for each claim
   /// @return The number of claims that were successful
   function _claim(
-    Vault _vault,
+    IClaimable _vault,
     uint8 _tier,
     address[] calldata _winners,
     uint32[][] calldata _prizeIndices,

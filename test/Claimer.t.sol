@@ -7,7 +7,8 @@ import { Claimer, MinFeeGeMax, VrgdaClaimFeeBelowMin, PrizePoolZeroAddress, FeeR
 import { UD2x18, ud2x18 } from "prb-math/UD2x18.sol";
 import { SD59x18 } from "prb-math/SD59x18.sol";
 
-import { Vault, IERC20, TwabController, IERC4626, PrizePool } from "pt-v5-vault/Vault.sol";
+import { PrizePool } from "pt-v5-prize-pool/PrizePool.sol";
+import { IClaimable } from "pt-v5-claimable-interface/interfaces/IClaimable.sol";
 import { LinearVRGDALib } from "../src/libraries/LinearVRGDALib.sol";
 
 // Custom Errors
@@ -17,7 +18,7 @@ contract ClaimerTest is Test {
   event AlreadyClaimed(address winner, uint8 tier, uint32 prizeIndex);
 
   event ClaimError(
-    Vault indexed vault,
+    IClaimable indexed vault,
     uint8 indexed tier,
     address indexed winner,
     uint32 prizeIndex,
@@ -36,7 +37,7 @@ contract ClaimerTest is Test {
 
   Claimer public claimer;
   PrizePool public prizePool = PrizePool(address(0x1234));
-  Vault public vault;
+  IClaimable public vault;
 
   SD59x18 public decayConstant;
   uint256 public ahead1_fee; // = 0.000090909090909090e18;
@@ -51,7 +52,7 @@ contract ClaimerTest is Test {
   function setUp() public {
     vm.warp(TIME_TO_REACH_MAX * 100);
     vm.etch(address(prizePool), "prizePool");
-    vault = Vault(address(0x99));
+    vault = IClaimable(address(0x99));
     vm.etch(address(vault), "fakecode");
     claimer = new Claimer(
       prizePool,
