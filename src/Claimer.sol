@@ -33,8 +33,8 @@ error PrizePoolZeroAddress();
 error FeeRecipientZeroAddress();
 
 /// @title Variable Rate Gradual Dutch Auction (VRGDA) Claimer
-/// @author PoolTogether Inc. Team
-/// @notice This contract uses a variable rate gradual dutch auction to inventivize prize claims on behalf of others
+/// @author G9 Software Inc.
+/// @notice This contract uses a variable rate gradual dutch auction to incentivize prize claims on behalf of others
 contract Claimer is Multicall {
   /// @notice Emitted when a prize has already been claimed
   /// @param winner The winner of the prize

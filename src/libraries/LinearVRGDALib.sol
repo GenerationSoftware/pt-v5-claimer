@@ -7,7 +7,7 @@ import { wadExp, wadLn, wadMul, unsafeWadMul, wadDiv } from "solmate/utils/Signe
 import { SafeCast } from "openzeppelin/utils/math/SafeCast.sol";
 
 /// @title Linear Variable Rate Gradual Dutch Auction
-/// @author Brendan Asselstine <brendan@pooltogether.com>
+/// @author Brendan Asselstine <brendan@g9software.com>
 /// @author Original authors FrankieIsLost <frankie@paradigm.xyz> and transmissions11 <t11s@paradigm.xyz>
 /// @notice Sell tokens roughly according to an issuance schedule.
 library LinearVRGDALib {
