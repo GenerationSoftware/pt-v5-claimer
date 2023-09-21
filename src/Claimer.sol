@@ -5,7 +5,6 @@ import { SD59x18 } from "prb-math/SD59x18.sol";
 import { UD2x18 } from "prb-math/UD2x18.sol";
 import { UD60x18 } from "prb-math/UD60x18.sol";
 import { PrizePool } from "pt-v5-prize-pool/PrizePool.sol";
-import { Multicall } from "openzeppelin/utils/Multicall.sol";
 import { SafeCast } from "openzeppelin/utils/math/SafeCast.sol";
 
 import { LinearVRGDALib } from "./libraries/LinearVRGDALib.sol";
@@ -35,7 +34,7 @@ error FeeRecipientZeroAddress();
 /// @title Variable Rate Gradual Dutch Auction (VRGDA) Claimer
 /// @author G9 Software Inc.
 /// @notice This contract uses a variable rate gradual dutch auction to incentivize prize claims on behalf of others
-contract Claimer is Multicall {
+contract Claimer {
   /// @notice Emitted when a prize has already been claimed
   /// @param winner The winner of the prize
   /// @param tier The prize tier
