@@ -9,7 +9,6 @@ import { UD2x18 } from "prb-math/UD2x18.sol";
 import { PrizePool } from "pt-v5-prize-pool/PrizePool.sol";
 
 contract ClaimerFactoryTest is Test {
-
   event ClaimerCreated(
     Claimer indexed claimer,
     PrizePool indexed prizePool,
@@ -63,5 +62,4 @@ contract ClaimerFactoryTest is Test {
     assertEq(factory.deployedClaimer(claimer), true);
     assertEq(factory.totalClaimers(), 1);
   }
-
 }

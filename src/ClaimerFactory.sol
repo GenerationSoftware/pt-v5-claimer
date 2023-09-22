@@ -9,7 +9,6 @@ import { UD2x18 } from "prb-math/UD2x18.sol";
 /// @author G9 Software Inc.
 /// @notice Factory to deploy new VRGDA Claimer contracts for PoolTogether V5.
 contract ClaimerFactory {
-
   /**
    * @notice Emitted when a new claimer contract is created.
    * @param prizePool The prize pool to claim for
@@ -28,7 +27,7 @@ contract ClaimerFactory {
   );
 
   /* ============ Variables ============ */
-  
+
   /// @notice List of all claimers deployed by this factory.
   Claimer[] public allClaimers;
 
@@ -58,7 +57,14 @@ contract ClaimerFactory {
       _maxFeePortionOfPrize
     );
 
-    emit ClaimerCreated(_claimer, _prizePool, _minimumFee, _maximumFee, _timeToReachMaxFee, _maxFeePortionOfPrize);
+    emit ClaimerCreated(
+      _claimer,
+      _prizePool,
+      _minimumFee,
+      _maximumFee,
+      _timeToReachMaxFee,
+      _maxFeePortionOfPrize
+    );
 
     deployedClaimer[_claimer] = true;
     allClaimers.push(_claimer);
@@ -73,5 +79,4 @@ contract ClaimerFactory {
   function totalClaimers() external view returns (uint256) {
     return allClaimers.length;
   }
-
 }

@@ -130,7 +130,6 @@ contract ClaimerTest is Test {
   }
 
   function testClaimPrizes_singleNoFeeSavesGas() public {
-
     // With fee
     address[] memory winners = newWinners(winner1);
     uint32[][] memory prizeIndices = newPrizeIndices(1, 1);

@@ -131,9 +131,7 @@ contract Claimer {
      * expect a fee and save them some gas on the calculation.
      */
     if (!feeRecipientZeroAddress) {
-      feePerClaim = SafeCast.toUint96(
-        _computeFeePerClaimForBatch(_tier, _winners, _prizeIndices)
-      );
+      feePerClaim = SafeCast.toUint96(_computeFeePerClaimForBatch(_tier, _winners, _prizeIndices));
       if (feePerClaim < _minVrgdaFeePerClaim) {
         revert VrgdaClaimFeeBelowMin(_minVrgdaFeePerClaim, feePerClaim);
       }
