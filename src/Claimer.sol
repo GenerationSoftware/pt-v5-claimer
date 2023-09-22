@@ -67,13 +67,14 @@ contract Claimer {
   /// @notice The minimum fee that will be charged
   uint256 public immutable minimumFee;
 
+  /// @notice The time in seconds to reach the max auction fee
   uint256 public immutable timeToReachMaxFee;
 
   /// @notice Constructs a new Claimer
   /// @param _prizePool The prize pool to claim for
   /// @param _minimumFee The minimum fee that should be charged
   /// @param _maximumFee The maximum fee that should be charged
-  /// @param _timeToReachMaxFee The time it should take to reach the maximum fee (for example should be the draw period in seconds)
+  /// @param _timeToReachMaxFee The time it should take to reach the maximum fee
   /// @param _maxFeePortionOfPrize The maximum fee that can be charged as a portion of the prize size. Fixed point 18 number
   constructor(
     PrizePool _prizePool,
