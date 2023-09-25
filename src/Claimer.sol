@@ -5,7 +5,6 @@ import { SD59x18 } from "prb-math/SD59x18.sol";
 import { UD2x18 } from "prb-math/UD2x18.sol";
 import { UD60x18 } from "prb-math/UD60x18.sol";
 import { PrizePool } from "pt-v5-prize-pool/PrizePool.sol";
-import { Multicall } from "openzeppelin/utils/Multicall.sol";
 import { SafeCast } from "openzeppelin/utils/math/SafeCast.sol";
 
 import { LinearVRGDALib } from "./libraries/LinearVRGDALib.sol";
@@ -33,9 +32,9 @@ error PrizePoolZeroAddress();
 error FeeRecipientZeroAddress();
 
 /// @title Variable Rate Gradual Dutch Auction (VRGDA) Claimer
-/// @author PoolTogether Inc. Team
-/// @notice This contract uses a variable rate gradual dutch auction to inventivize prize claims on behalf of others
-contract Claimer is Multicall {
+/// @author G9 Software Inc.
+/// @notice This contract uses a variable rate gradual dutch auction to incentivize prize claims on behalf of others
+contract Claimer {
   /// @notice Emitted when a prize has already been claimed
   /// @param winner The winner of the prize
   /// @param tier The prize tier
@@ -68,13 +67,14 @@ contract Claimer is Multicall {
   /// @notice The minimum fee that will be charged
   uint256 public immutable minimumFee;
 
+  /// @notice The time in seconds to reach the max auction fee
   uint256 public immutable timeToReachMaxFee;
 
   /// @notice Constructs a new Claimer
   /// @param _prizePool The prize pool to claim for
   /// @param _minimumFee The minimum fee that should be charged
   /// @param _maximumFee The maximum fee that should be charged
-  /// @param _timeToReachMaxFee The time it should take to reach the maximum fee (for example should be the draw period in seconds)
+  /// @param _timeToReachMaxFee The time it should take to reach the maximum fee
   /// @param _maxFeePortionOfPrize The maximum fee that can be charged as a portion of the prize size. Fixed point 18 number
   constructor(
     PrizePool _prizePool,
@@ -131,9 +131,7 @@ contract Claimer is Multicall {
      * expect a fee and save them some gas on the calculation.
      */
     if (!feeRecipientZeroAddress) {
-      feePerClaim = SafeCast.toUint96(
-        _computeFeePerClaimForBatch(_tier, _winners, _prizeIndices)
-      );
+      feePerClaim = SafeCast.toUint96(_computeFeePerClaimForBatch(_tier, _winners, _prizeIndices));
       if (feePerClaim < _minVrgdaFeePerClaim) {
         revert VrgdaClaimFeeBelowMin(_minVrgdaFeePerClaim, feePerClaim);
       }
