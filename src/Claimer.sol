@@ -64,7 +64,7 @@ contract Claimer {
   /// @notice The VRGDA decay constant computed in the constructor
   SD59x18 public immutable decayConstant;
 
-  /// @notice The minimum fee that will be charged
+  /// @notice The minimum fee that should be charged per claim (used to calculate the VRGDA decay constant that controls the pricing curve)
   uint256 public immutable minimumFee;
 
   /// @notice The time in seconds to reach the max auction fee
@@ -72,8 +72,10 @@ contract Claimer {
 
   /// @notice Constructs a new Claimer
   /// @param _prizePool The prize pool to claim for
-  /// @param _minimumFee The minimum fee that should be charged
-  /// @param _maximumFee The maximum fee that should be charged
+  /// @param _minimumFee The minimum fee that should be charged (used to calculate the VRGDA decay constant). Fees will start
+  /// at this price during an auction, so it is recommended to set it very low (must be greater than zero).
+  /// @param _maximumFee The maximum fee that should be charged (used to calculate the VRGDA decay constant). Fees will never
+  /// exceed this amount per claim.
   /// @param _timeToReachMaxFee The time it should take to reach the maximum fee
   /// @param _maxFeePortionOfPrize The maximum fee that can be charged as a portion of the prize size. Fixed point 18 number
   constructor(
