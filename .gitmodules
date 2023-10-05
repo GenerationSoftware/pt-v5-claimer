@@ -19,3 +19,4 @@
 [submodule "lib/pt-v5-prize-pool"]
 	path = lib/pt-v5-prize-pool
 	url = https://github.com/GenerationSoftware/pt-v5-prize-pool
+	branch = prod-testnet-2

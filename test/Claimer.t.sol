@@ -294,7 +294,7 @@ contract ClaimerTest is Test {
     );
     vm.mockCall(
       address(prizePool),
-      abi.encodeWithSelector(prizePool.lastClosedDrawAwardedAt.selector),
+      abi.encodeWithSelector(prizePool.lastAwardedDrawAwardedAt.selector),
       abi.encode(startTime)
     );
     vm.mockCall(
@@ -318,7 +318,7 @@ contract ClaimerTest is Test {
     );
     vm.mockCall(
       address(prizePool),
-      abi.encodeWithSelector(prizePool.lastClosedDrawAwardedAt.selector),
+      abi.encodeWithSelector(prizePool.lastAwardedDrawAwardedAt.selector),
       abi.encode(startTime)
     );
     vm.mockCall(
@@ -362,7 +362,7 @@ contract ClaimerTest is Test {
   function mockLastClosedDrawAwardedAt(int256 drawEndedRelativeToNow) public {
     vm.mockCall(
       address(prizePool),
-      abi.encodeWithSelector(prizePool.lastClosedDrawAwardedAt.selector),
+      abi.encodeWithSelector(prizePool.lastAwardedDrawAwardedAt.selector),
       abi.encodePacked(int256(block.timestamp) + drawEndedRelativeToNow)
     );
   }
