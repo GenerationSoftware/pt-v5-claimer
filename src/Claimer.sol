@@ -251,7 +251,7 @@ contract Claimer {
       prizePool.estimatedPrizeCount(),
       timeToReachMaxFee
     );
-    uint256 elapsed = block.timestamp - (prizePool.lastClosedDrawAwardedAt());
+    uint256 elapsed = block.timestamp - (prizePool.lastAwardedDrawAwardedAt());
     uint256 fee;
 
     for (uint256 i = 0; i < _claimCount; i++) {
