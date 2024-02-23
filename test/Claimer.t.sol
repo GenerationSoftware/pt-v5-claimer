@@ -307,10 +307,12 @@ contract ClaimerTest is Test {
       abi.encodeWithSelector(prizePool.claimCount.selector),
       abi.encode(0)
     );
+    mockIsCanaryTier(0, false);
+    mockGetTierPrizeSize(0, 100e18);
 
     uint firstSaleTime = TIME_TO_REACH_MAX / prizeCount;
     vm.warp(startTime + firstSaleTime);
-    assertApproxEqAbs(claimer.computeFeePerClaim(100e18, 1), MINIMUM_FEE, 4);
+    assertApproxEqAbs(claimer.computeFeePerClaim(0, 1), MINIMUM_FEE, 4);
   }
 
   function testComputeFeePerClaim_maxFee() public {
@@ -332,10 +334,13 @@ contract ClaimerTest is Test {
       abi.encode(0)
     );
 
+    mockIsCanaryTier(0, false);
+    mockGetTierPrizeSize(0, MAXIMUM_FEE*2);
+
     uint firstSaleTime = TIME_TO_REACH_MAX / prizeCount;
 
     vm.warp(startTime + firstSaleTime + TIME_TO_REACH_MAX + 1);
-    assertApproxEqAbs(claimer.computeFeePerClaim(MAXIMUM_FEE, 1), MAXIMUM_FEE, 4);
+    assertApproxEqAbs(claimer.computeFeePerClaim(0, 1), MAXIMUM_FEE, 4);
   }
 
   function mockPrizePool(uint256 drawId, int256 drawEndedRelativeToNow, uint256 claimCount) public {
