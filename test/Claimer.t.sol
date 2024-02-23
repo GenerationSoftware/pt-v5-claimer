@@ -36,8 +36,8 @@ contract ClaimerTest is Test {
   uint64 public constant MAX_FEE_PERCENTAGE_OF_PRIZE = 0.5e18;
 
   Claimer public claimer;
-  PrizePool public prizePool = PrizePool(address(0x1234));
-  IClaimable public vault;
+  PrizePool public prizePool = PrizePool(makeAddr("prizePool"));
+  IClaimable public vault = IClaimable(makeAddr("vault"));
 
   SD59x18 public decayConstant;
   uint256 public ahead1_fee; // = 0.000090909090909090e18;
@@ -52,7 +52,6 @@ contract ClaimerTest is Test {
   function setUp() public {
     vm.warp(TIME_TO_REACH_MAX * 100);
     vm.etch(address(prizePool), "prizePool");
-    vault = IClaimable(address(0x99));
     vm.etch(address(vault), "fakecode");
     claimer = new Claimer(
       prizePool,
@@ -71,6 +70,10 @@ contract ClaimerTest is Test {
       LinearVRGDALib.getPerTimeUnit(ESTIMATED_PRIZES, TIME_TO_REACH_MAX),
       decayConstant
     );
+    mockIsCanaryTier(0, false);
+    mockIsCanaryTier(1, false);
+    mockIsCanaryTier(2, true);
+    mockIsCanaryTier(3, true);
   }
 
   function testConstructor() public {
@@ -149,7 +152,7 @@ contract ClaimerTest is Test {
     assertEq(totalNoFeeFees, 0, "Total fees");
 
     // Check gas
-    console2.log("no fee claim gas savings: ", feeClaimGasUsed - noFeeClaimGasUsed);
+    // console2.log("no fee claim gas savings: ", feeClaimGasUsed - noFeeClaimGasUsed);
     assertGt(feeClaimGasUsed, noFeeClaimGasUsed, "Fee / No Fee Gas Difference");
   }
 
@@ -281,7 +284,9 @@ contract ClaimerTest is Test {
 
   function testComputeMaxFee_canaryPrizes() public {
     mockGetTierPrizeSize(2, 0.5e18);
-    assertEq(claimer.computeMaxFee(2), 0.25e18);
+    mockGetTierPrizeSize(3, 1e18);
+    assertEq(claimer.computeMaxFee(2), 0.5e18); // full size
+    assertEq(claimer.computeMaxFee(3), 1e18); // full size
   }
 
   function testComputeFeePerClaim_minFee() public {
@@ -413,11 +418,19 @@ contract ClaimerTest is Test {
     );
   }
 
+  function mockIsCanaryTier(uint8 _tier, bool isCanary) internal {
+    vm.mockCall(
+      address(prizePool),
+      abi.encodeWithSelector(prizePool.isCanaryTier.selector, _tier),
+      abi.encode(isCanary)
+    );
+  }
+
   function mockGetTierPrizeSize(uint8 _tier, uint256 prizeSize) internal {
     vm.mockCall(
       address(prizePool),
       abi.encodeWithSelector(prizePool.getTierPrizeSize.selector, _tier),
-      abi.encodePacked(prizeSize)
+      abi.encode(prizeSize)
     );
   }
 }

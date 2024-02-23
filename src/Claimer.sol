@@ -3,7 +3,7 @@ pragma solidity 0.8.19;
 
 import { SD59x18 } from "prb-math/SD59x18.sol";
 import { UD2x18 } from "prb-math/UD2x18.sol";
-import { UD60x18 } from "prb-math/UD60x18.sol";
+import { UD60x18, convert } from "prb-math/UD60x18.sol";
 import { PrizePool } from "pt-v5-prize-pool/PrizePool.sol";
 import { SafeCast } from "openzeppelin/utils/math/SafeCast.sol";
 
@@ -157,7 +157,6 @@ contract Claimer {
     for (uint256 i = 0; i < length; i++) {
       claimCount += _prizeIndices[i].length;
     }
-
     return _computeFeePerClaim(_computeMaxFee(_tier), claimCount, prizePool.claimCount());
   }
 
@@ -279,10 +278,15 @@ contract Claimer {
   /// @param _tier The tier to compute the max fee for
   /// @return The maximum fee that will be charged for a prize claim for the given tier
   function _computeMaxFee(uint8 _tier) internal view returns (uint256) {
-    return
-      UD60x18.unwrap(
-        maxFeePortionOfPrize.intoUD60x18().mul(UD60x18.wrap(prizePool.getTierPrizeSize(_tier)))
-      );
+    uint256 prizeSize = prizePool.getTierPrizeSize(_tier);
+    if (prizePool.isCanaryTier(_tier)) {
+      return prizeSize;
+    } else {
+      return
+        convert(
+          maxFeePortionOfPrize.intoUD60x18().mul(convert(prizeSize))
+        );
+    }
   }
 
   /// @notice Computes the fee for the next claim.
