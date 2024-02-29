@@ -23,6 +23,8 @@ In PoolTogether V5 prizes are awarded every "Draw". When a user wins a prize a t
 - Prizes come from the Prize Pool.
 - All depositors in Vaults that have contributed yield through a Liquidator recently are elgigible to win a prize.
 
+Anyone may capture fees by claiming prizes through the Claimer contract.  The claimer contract will price fees according to a VRGDA algorithm.  The fees for the two canary tiers are always set to the prize size; meaning that the claimers can capture the whole prize.
+
 ## Development
 
 ### Installation

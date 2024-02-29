@@ -275,6 +275,17 @@ contract ClaimerTest is Test {
     assertEq(claimer.computeTotalFees(1, 2, 10), 169295709060728);
   }
 
+  function testComputeTotalFees_canary() public {
+    mockIsCanaryTier(1, true);
+    mockGetTierPrizeSize(1, 100e18);
+    vm.mockCall(
+      address(prizePool),
+      abi.encodeWithSelector(prizePool.claimCount.selector),
+      abi.encode(0)
+    );
+    assertEq(claimer.computeTotalFees(1, 1), 100e18);
+  }
+
   function testComputeMaxFee_normalPrizes() public {
     mockGetTierPrizeSize(0, 10e18);
     mockGetTierPrizeSize(1, SMALLEST_PRIZE_SIZE);

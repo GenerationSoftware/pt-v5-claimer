@@ -33,8 +33,9 @@ error FeeRecipientZeroAddress();
 
 /// @title Variable Rate Gradual Dutch Auction (VRGDA) Claimer
 /// @author G9 Software Inc.
-/// @notice This contract uses a variable rate gradual dutch auction to incentivize prize claims on behalf of others
+/// @notice This contract uses a variable rate gradual dutch auction to incentivize prize claims on behalf of others.  Fees for each canary tier is set to the respective tier's prize size.
 contract Claimer {
+
   /// @notice Emitted when a prize has already been claimed
   /// @param winner The winner of the prize
   /// @param tier The prize tier
@@ -219,6 +220,10 @@ contract Claimer {
     return _computeFeePerClaim(_tier, _claimCount, _claimedCount) * _claimCount;
   }
 
+  /// @notice Computes the fee per claim for the given tier and number of claims
+  /// @param _tier The tier to claim prizes from
+  /// @param _claimCount The number of claims
+  /// @return The fee that will be taken per claim
   function computeFeePerClaim(uint8 _tier, uint256 _claimCount) external view returns (uint256) {
     return _computeFeePerClaim(_tier, _claimCount, prizePool.claimCount());
   }
