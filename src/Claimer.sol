@@ -3,7 +3,7 @@ pragma solidity 0.8.19;
 
 import { SD59x18 } from "prb-math/SD59x18.sol";
 import { UD2x18 } from "prb-math/UD2x18.sol";
-import { UD60x18 } from "prb-math/UD60x18.sol";
+import { UD60x18, convert } from "prb-math/UD60x18.sol";
 import { PrizePool } from "pt-v5-prize-pool/PrizePool.sol";
 import { SafeCast } from "openzeppelin/utils/math/SafeCast.sol";
 
@@ -33,8 +33,9 @@ error FeeRecipientZeroAddress();
 
 /// @title Variable Rate Gradual Dutch Auction (VRGDA) Claimer
 /// @author G9 Software Inc.
-/// @notice This contract uses a variable rate gradual dutch auction to incentivize prize claims on behalf of others
+/// @notice This contract uses a variable rate gradual dutch auction to incentivize prize claims on behalf of others.  Fees for each canary tier is set to the respective tier's prize size.
 contract Claimer {
+
   /// @notice Emitted when a prize has already been claimed
   /// @param winner The winner of the prize
   /// @param tier The prize tier
@@ -102,13 +103,13 @@ contract Claimer {
 
   /// @notice Allows the caller to claim prizes on behalf of others or for themself.
   /// @dev If you are claiming for yourself or don't want to take a fee, set the `_feeRecipient` and
-  /// `_minVrgdaFeePerClaim` to zero. This will save some gas on fee calculation.
+  /// `_minFeePerClaim` to zero. This will save some gas on fee calculation.
   /// @param _vault The vault to claim from
   /// @param _tier The tier to claim for
   /// @param _winners The array of winners to claim for
   /// @param _prizeIndices The array of prize indices to claim for each winner (length should match winners)
   /// @param _feeRecipient The address to receive the claim fees
-  /// @param _minVrgdaFeePerClaim The minimum fee for each claim
+  /// @param _minFeePerClaim The minimum fee for each claim
   /// @return totalFees The total fees collected across all successful claims
   function claimPrizes(
     IClaimable _vault,
@@ -116,10 +117,10 @@ contract Claimer {
     address[] calldata _winners,
     uint32[][] calldata _prizeIndices,
     address _feeRecipient,
-    uint256 _minVrgdaFeePerClaim
+    uint256 _minFeePerClaim
   ) external returns (uint256 totalFees) {
     bool feeRecipientZeroAddress = address(0) == _feeRecipient;
-    if (feeRecipientZeroAddress && _minVrgdaFeePerClaim != 0) {
+    if (feeRecipientZeroAddress && _minFeePerClaim != 0) {
       revert FeeRecipientZeroAddress();
     }
     if (_winners.length != _prizeIndices.length) {
@@ -133,22 +134,20 @@ contract Claimer {
      * expect a fee and save them some gas on the calculation.
      */
     if (!feeRecipientZeroAddress) {
-      feePerClaim = SafeCast.toUint96(_computeFeePerClaimForBatch(_tier, _winners, _prizeIndices));
-      if (feePerClaim < _minVrgdaFeePerClaim) {
-        revert VrgdaClaimFeeBelowMin(_minVrgdaFeePerClaim, feePerClaim);
+      feePerClaim = SafeCast.toUint96(_computeFeePerClaim(_tier, _countClaims(_winners, _prizeIndices), prizePool.claimCount()));
+      if (feePerClaim < _minFeePerClaim) {
+        revert VrgdaClaimFeeBelowMin(_minFeePerClaim, feePerClaim);
       }
     }
 
     return feePerClaim * _claim(_vault, _tier, _winners, _prizeIndices, _feeRecipient, feePerClaim);
   }
 
-  /// @notice Computes the fee per claim given a batch of winners and prize indices
-  /// @param _tier The tier the claims are for
+  /// @notice Computes the number of claims that will be made
   /// @param _winners The array of winners to claim for
   /// @param _prizeIndices The array of prize indices to claim for each winner (length should match winners)
-  /// @return The fee per claim
-  function _computeFeePerClaimForBatch(
-    uint8 _tier,
+  /// @return The number of claims
+  function _countClaims(
     address[] calldata _winners,
     uint32[][] calldata _prizeIndices
   ) internal view returns (uint256) {
@@ -157,8 +156,7 @@ contract Claimer {
     for (uint256 i = 0; i < length; i++) {
       claimCount += _prizeIndices[i].length;
     }
-
-    return _computeFeePerClaim(_computeMaxFee(_tier), claimCount, prizePool.claimCount());
+    return claimCount;
   }
 
   /// @notice Claims prizes for a batch of winners and prize indices
@@ -206,8 +204,7 @@ contract Claimer {
   /// @param _claimCount The number of claims
   /// @return The total fees for those claims
   function computeTotalFees(uint8 _tier, uint256 _claimCount) external view returns (uint256) {
-    return
-      _computeFeePerClaim(_computeMaxFee(_tier), _claimCount, prizePool.claimCount()) * _claimCount;
+    return computeTotalFees(_tier, _claimCount, prizePool.claimCount());
   }
 
   /// @notice Computes the total fees for the given number of claims if a number of claims have already been made.
@@ -219,34 +216,35 @@ contract Claimer {
     uint8 _tier,
     uint256 _claimCount,
     uint256 _claimedCount
-  ) external view returns (uint256) {
-    return _computeFeePerClaim(_computeMaxFee(_tier), _claimCount, _claimedCount) * _claimCount;
+  ) public view returns (uint256) {
+    return _computeFeePerClaim(_tier, _claimCount, _claimedCount) * _claimCount;
   }
 
-  /// @notice Computes the fees for several claims.
-  /// @param _maxFee the maximum fee that can be charged
-  /// @param _claimCount the number of claims to check
-  /// @return The fees for the claims
-  function computeFeePerClaim(
-    uint256 _maxFee,
-    uint256 _claimCount
-  ) external view returns (uint256) {
-    return _computeFeePerClaim(_maxFee, _claimCount, prizePool.claimCount());
+  /// @notice Computes the fee per claim for the given tier and number of claims
+  /// @param _tier The tier to claim prizes from
+  /// @param _claimCount The number of claims
+  /// @return The fee that will be taken per claim
+  function computeFeePerClaim(uint8 _tier, uint256 _claimCount) external view returns (uint256) {
+    return _computeFeePerClaim(_tier, _claimCount, prizePool.claimCount());
   }
 
   /// @notice Computes the total fees for the given number of claims.
-  /// @param _maxFee The maximum fee
+  /// @param _tier The tier
   /// @param _claimCount The number of claims to check
   /// @param _claimedCount The number of prizes already claimed
   /// @return The total fees for the claims
   function _computeFeePerClaim(
-    uint256 _maxFee,
+    uint8 _tier,
     uint256 _claimCount,
     uint256 _claimedCount
   ) internal view returns (uint256) {
     if (_claimCount == 0) {
       return 0;
     }
+    if (prizePool.isCanaryTier(_tier)) {
+      return prizePool.getTierPrizeSize(_tier);
+    }
+    uint256 _maxFee = _computeMaxFee(_tier);
     SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(
       prizePool.estimatedPrizeCount(),
       timeToReachMaxFee
@@ -272,16 +270,21 @@ contract Claimer {
   /// @param _tier The tier to compute the max fee for
   /// @return The maximum fee that can be charged
   function computeMaxFee(uint8 _tier) public view returns (uint256) {
-    return _computeMaxFee(_tier);
+    if (prizePool.isCanaryTier(_tier)) {
+      return prizePool.getTierPrizeSize(_tier);
+    } else {
+      return _computeMaxFee(_tier);
+    }
   }
 
   /// @notice Computes the max fee given the tier
   /// @param _tier The tier to compute the max fee for
   /// @return The maximum fee that will be charged for a prize claim for the given tier
   function _computeMaxFee(uint8 _tier) internal view returns (uint256) {
+    uint256 prizeSize = prizePool.getTierPrizeSize(_tier);
     return
-      UD60x18.unwrap(
-        maxFeePortionOfPrize.intoUD60x18().mul(UD60x18.wrap(prizePool.getTierPrizeSize(_tier)))
+      convert(
+        maxFeePortionOfPrize.intoUD60x18().mul(convert(prizeSize))
       );
   }
 

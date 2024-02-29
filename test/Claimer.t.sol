@@ -36,8 +36,8 @@ contract ClaimerTest is Test {
   uint64 public constant MAX_FEE_PERCENTAGE_OF_PRIZE = 0.5e18;
 
   Claimer public claimer;
-  PrizePool public prizePool = PrizePool(address(0x1234));
-  IClaimable public vault;
+  PrizePool public prizePool = PrizePool(makeAddr("prizePool"));
+  IClaimable public vault = IClaimable(makeAddr("vault"));
 
   SD59x18 public decayConstant;
   uint256 public ahead1_fee; // = 0.000090909090909090e18;
@@ -52,7 +52,6 @@ contract ClaimerTest is Test {
   function setUp() public {
     vm.warp(TIME_TO_REACH_MAX * 100);
     vm.etch(address(prizePool), "prizePool");
-    vault = IClaimable(address(0x99));
     vm.etch(address(vault), "fakecode");
     claimer = new Claimer(
       prizePool,
@@ -71,6 +70,10 @@ contract ClaimerTest is Test {
       LinearVRGDALib.getPerTimeUnit(ESTIMATED_PRIZES, TIME_TO_REACH_MAX),
       decayConstant
     );
+    mockIsCanaryTier(0, false);
+    mockIsCanaryTier(1, false);
+    mockIsCanaryTier(2, true);
+    mockIsCanaryTier(3, true);
   }
 
   function testConstructor() public {
@@ -149,7 +152,7 @@ contract ClaimerTest is Test {
     assertEq(totalNoFeeFees, 0, "Total fees");
 
     // Check gas
-    console2.log("no fee claim gas savings: ", feeClaimGasUsed - noFeeClaimGasUsed);
+    // console2.log("no fee claim gas savings: ", feeClaimGasUsed - noFeeClaimGasUsed);
     assertGt(feeClaimGasUsed, noFeeClaimGasUsed, "Fee / No Fee Gas Difference");
   }
 
@@ -272,6 +275,17 @@ contract ClaimerTest is Test {
     assertEq(claimer.computeTotalFees(1, 2, 10), 169295709060728);
   }
 
+  function testComputeTotalFees_canary() public {
+    mockIsCanaryTier(1, true);
+    mockGetTierPrizeSize(1, 100e18);
+    vm.mockCall(
+      address(prizePool),
+      abi.encodeWithSelector(prizePool.claimCount.selector),
+      abi.encode(0)
+    );
+    assertEq(claimer.computeTotalFees(1, 1), 100e18);
+  }
+
   function testComputeMaxFee_normalPrizes() public {
     mockGetTierPrizeSize(0, 10e18);
     mockGetTierPrizeSize(1, SMALLEST_PRIZE_SIZE);
@@ -281,7 +295,9 @@ contract ClaimerTest is Test {
 
   function testComputeMaxFee_canaryPrizes() public {
     mockGetTierPrizeSize(2, 0.5e18);
-    assertEq(claimer.computeMaxFee(2), 0.25e18);
+    mockGetTierPrizeSize(3, 1e18);
+    assertEq(claimer.computeMaxFee(2), 0.5e18); // full size
+    assertEq(claimer.computeMaxFee(3), 1e18); // full size
   }
 
   function testComputeFeePerClaim_minFee() public {
@@ -302,10 +318,12 @@ contract ClaimerTest is Test {
       abi.encodeWithSelector(prizePool.claimCount.selector),
       abi.encode(0)
     );
+    mockIsCanaryTier(0, false);
+    mockGetTierPrizeSize(0, 100e18);
 
     uint firstSaleTime = TIME_TO_REACH_MAX / prizeCount;
     vm.warp(startTime + firstSaleTime);
-    assertApproxEqAbs(claimer.computeFeePerClaim(100e18, 1), MINIMUM_FEE, 4);
+    assertApproxEqAbs(claimer.computeFeePerClaim(0, 1), MINIMUM_FEE, 4);
   }
 
   function testComputeFeePerClaim_maxFee() public {
@@ -327,10 +345,13 @@ contract ClaimerTest is Test {
       abi.encode(0)
     );
 
+    mockIsCanaryTier(0, false);
+    mockGetTierPrizeSize(0, MAXIMUM_FEE*2);
+
     uint firstSaleTime = TIME_TO_REACH_MAX / prizeCount;
 
     vm.warp(startTime + firstSaleTime + TIME_TO_REACH_MAX + 1);
-    assertApproxEqAbs(claimer.computeFeePerClaim(MAXIMUM_FEE, 1), MAXIMUM_FEE, 4);
+    assertApproxEqAbs(claimer.computeFeePerClaim(0, 1), MAXIMUM_FEE, 4);
   }
 
   function mockPrizePool(uint256 drawId, int256 drawEndedRelativeToNow, uint256 claimCount) public {
@@ -413,11 +434,19 @@ contract ClaimerTest is Test {
     );
   }
 
+  function mockIsCanaryTier(uint8 _tier, bool isCanary) internal {
+    vm.mockCall(
+      address(prizePool),
+      abi.encodeWithSelector(prizePool.isCanaryTier.selector, _tier),
+      abi.encode(isCanary)
+    );
+  }
+
   function mockGetTierPrizeSize(uint8 _tier, uint256 prizeSize) internal {
     vm.mockCall(
       address(prizePool),
       abi.encodeWithSelector(prizePool.getTierPrizeSize.selector, _tier),
-      abi.encodePacked(prizeSize)
+      abi.encode(prizeSize)
     );
   }
 }
