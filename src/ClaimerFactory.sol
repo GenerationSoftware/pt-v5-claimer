@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity ^0.8.24;
 
 import { PrizePool } from "pt-v5-prize-pool/PrizePool.sol";
 import { Claimer } from "./Claimer.sol";
