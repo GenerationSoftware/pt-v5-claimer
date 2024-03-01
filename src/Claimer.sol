@@ -15,21 +15,24 @@ import { IClaimable } from "pt-v5-claimable-interface/interfaces/IClaimable.sol"
 /// @param prizeIndicesLength Length of the prize indices array
 error ClaimArraySizeMismatch(uint256 winnersLength, uint256 prizeIndicesLength);
 
-/// @notice Emitted when the minimum fee is greater than or equal to the max fee
+/// @notice Thrown when the minimum fee is greater than or equal to the max fee
 /// @param minFee The minimum fee passed
 /// @param maxFee The maximum fee passed
 error MinFeeGeMax(uint256 minFee, uint256 maxFee);
 
-/// @notice Emitted when the VRGDA fee is below the minimum fee
+/// @notice Thrown when the VRGDA fee is below the minimum fee
 /// @param minFee The minimum fee requested by the user
 /// @param fee The actual VRGDA fee
 error VrgdaClaimFeeBelowMin(uint256 minFee, uint256 fee);
 
-/// @notice Emitted when the prize pool is set the the zero address
+/// @notice Thrown when the prize pool is set the the zero address
 error PrizePoolZeroAddress();
 
-/// @notice Emitted when someone tries to claim a prizes with a fee, but sets the fee recipient address to the zero address.
+/// @notice Thrown when someone tries to claim a prizes with a fee, but sets the fee recipient address to the zero address.
 error FeeRecipientZeroAddress();
+
+/// @notice Thrown when the time to reach the max fee is zero
+error TimeToReachMaxFeeZero();
 
 /// @title Variable Rate Gradual Dutch Auction (VRGDA) Claimer
 /// @author G9 Software Inc.
@@ -91,6 +94,9 @@ contract Claimer {
     }
     if (_minimumFee >= _maximumFee) {
       revert MinFeeGeMax(_minimumFee, _maximumFee);
+    }
+    if (_timeToReachMaxFee == 0) {
+      revert TimeToReachMaxFeeZero();
     }
     prizePool = _prizePool;
     maxFeePortionOfPrize = _maxFeePortionOfPrize;
