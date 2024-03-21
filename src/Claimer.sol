@@ -39,12 +39,6 @@ error TimeToReachMaxFeeZero();
 /// @notice This contract uses a variable rate gradual dutch auction to incentivize prize claims on behalf of others.  Fees for each canary tier is set to the respective tier's prize size.
 contract Claimer {
 
-  /// @notice Emitted when a prize has already been claimed
-  /// @param winner The winner of the prize
-  /// @param tier The prize tier
-  /// @param prizeIndex The prize index
-  event AlreadyClaimed(address winner, uint8 tier, uint32 prizeIndex);
-
   /// @notice Emitted when a claim reverts
   /// @param vault The vault for which the claim failed
   /// @param tier The tier for which the claim failed
@@ -190,12 +184,8 @@ contract Claimer {
       for (uint256 p = 0; p < prizeIndicesLength; p++) {
         try
           _vault.claimPrize(_winners[w], _tier, _prizeIndices[w][p], _feePerClaim, _feeRecipient)
-        returns (uint256 prizeSize) {
-          if (0 != prizeSize) {
-            actualClaimCount++;
-          } else {
-            emit AlreadyClaimed(_winners[w], _tier, _prizeIndices[w][p]);
-          }
+        returns (uint256 /* prizeSize */) {
+          actualClaimCount++;
         } catch (bytes memory reason) {
           emit ClaimError(_vault, _tier, _winners[w], _prizeIndices[w][p], reason);
         }

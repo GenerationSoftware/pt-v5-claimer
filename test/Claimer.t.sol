@@ -14,7 +14,7 @@ import {
 import { UD2x18, ud2x18 } from "prb-math/UD2x18.sol";
 import { SD59x18 } from "prb-math/SD59x18.sol";
 
-import { PrizePool } from "pt-v5-prize-pool/PrizePool.sol";
+import { PrizePool, AlreadyClaimed } from "pt-v5-prize-pool/PrizePool.sol";
 import { IClaimable } from "pt-v5-claimable-interface/interfaces/IClaimable.sol";
 import { LinearVRGDALib } from "../src/libraries/LinearVRGDALib.sol";
 
@@ -22,8 +22,6 @@ import { LinearVRGDALib } from "../src/libraries/LinearVRGDALib.sol";
 error ClaimArraySizeMismatch(uint256 winnersLength, uint256 prizeIndicesLength);
 
 contract ClaimerTest is Test {
-  event AlreadyClaimed(address winner, uint8 tier, uint32 prizeIndex);
-
   event ClaimError(
     IClaimable indexed vault,
     uint8 indexed tier,
@@ -209,14 +207,25 @@ contract ClaimerTest is Test {
     assertEq(claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 100e18), 0);
   }
 
-  function testClaimPrizes_alreadyClaimed() public {
+  function testClaimPrizes_alreadyClaimedError() public {
     address[] memory winners = newWinners(winner1);
     uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
     mockPrizePool(1, -100, 0);
-    mockClaimPrize(1, winner1, 0, uint96(UNSOLD_100_SECONDS_IN_FEE), address(this), 0);
+    vm.mockCallRevert(
+      address(vault),
+      abi.encodeWithSelector(
+        vault.claimPrize.selector,
+        winner1,
+        1,
+        0,
+        uint96(UNSOLD_100_SECONDS_IN_FEE),
+        address(this)
+      ),
+      abi.encodeWithSelector(AlreadyClaimed.selector, address(vault), winner1, 1, 0)
+    );
     vm.expectEmit(true, true, true, true);
-    emit AlreadyClaimed(winner1, 1, 0);
-    assertEq(claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0), 0);
+    emit ClaimError(vault, 1, winner1, 0, abi.encodeWithSelector(AlreadyClaimed.selector, address(vault), winner1, 1, 0));
+    claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);
   }
 
   function testClaimPrizes_maxFee() public {
