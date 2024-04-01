@@ -15,11 +15,6 @@ import { IClaimable } from "pt-v5-claimable-interface/interfaces/IClaimable.sol"
 /// @param prizeIndicesLength Length of the prize indices array
 error ClaimArraySizeMismatch(uint256 winnersLength, uint256 prizeIndicesLength);
 
-/// @notice Thrown when the minimum fee is greater than or equal to the max fee
-/// @param minFee The minimum fee passed
-/// @param maxFee The maximum fee passed
-error MinFeeGeMax(uint256 minFee, uint256 maxFee);
-
 /// @notice Thrown when the VRGDA fee is below the minimum fee
 /// @param minFee The minimum fee requested by the user
 /// @param fee The actual VRGDA fee
@@ -59,45 +54,26 @@ contract Claimer {
   /// @notice The maximum fee that can be charged as a portion of the prize size. Fixed point 18 number
   UD2x18 public immutable maxFeePortionOfPrize;
 
-  /// @notice The VRGDA decay constant computed in the constructor
-  SD59x18 public immutable decayConstant;
-
-  /// @notice The minimum fee that should be charged per claim (used to calculate the VRGDA decay constant that controls the pricing curve)
-  uint256 public immutable minimumFee;
-
   /// @notice The time in seconds to reach the max auction fee
   uint256 public immutable timeToReachMaxFee;
 
   /// @notice Constructs a new Claimer
   /// @param _prizePool The prize pool to claim for
-  /// @param _minimumFee The minimum fee that should be charged (used to calculate the VRGDA decay constant). Fees will start
-  /// at this price during an auction, so it is recommended to set it very low (must be greater than zero).
-  /// @param _maximumFee The maximum fee that should be charged (used to calculate the VRGDA decay constant). Fees will never
-  /// exceed this amount per claim.
   /// @param _timeToReachMaxFee The time it should take to reach the maximum fee
   /// @param _maxFeePortionOfPrize The maximum fee that can be charged as a portion of the prize size. Fixed point 18 number
   constructor(
     PrizePool _prizePool,
-    uint256 _minimumFee,
-    uint256 _maximumFee,
     uint256 _timeToReachMaxFee,
     UD2x18 _maxFeePortionOfPrize
   ) {
     if (address(0) == address(_prizePool)) {
       revert PrizePoolZeroAddress();
     }
-    if (_minimumFee >= _maximumFee) {
-      revert MinFeeGeMax(_minimumFee, _maximumFee);
-    }
     if (_timeToReachMaxFee == 0) {
       revert TimeToReachMaxFeeZero();
     }
     prizePool = _prizePool;
     maxFeePortionOfPrize = _maxFeePortionOfPrize;
-    decayConstant = LinearVRGDALib.getDecayConstant(
-      LinearVRGDALib.getMaximumPriceDeltaScale(_minimumFee, _maximumFee, _timeToReachMaxFee)
-    );
-    minimumFee = _minimumFee;
     timeToReachMaxFee = _timeToReachMaxFee;
   }
 
@@ -240,6 +216,8 @@ contract Claimer {
     if (prizePool.isCanaryTier(_tier)) {
       return prizePool.getTierPrizeSize(_tier);
     }
+    uint256 targetFee = _computeFeeTarget();
+    SD59x18 decayConstant = _computeDecayConstant(targetFee);
     uint256 _maxFee = _computeMaxFee(_tier);
     SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(
       prizePool.estimatedPrizeCountWithBothCanaries(),
@@ -250,7 +228,7 @@ contract Claimer {
 
     for (uint256 i = 0; i < _claimCount; i++) {
       fee += _computeFeeForNextClaim(
-        minimumFee,
+        targetFee,
         decayConstant,
         perTimeUnit,
         elapsed,
@@ -267,10 +245,33 @@ contract Claimer {
   /// @return The maximum fee that can be charged
   function computeMaxFee(uint8 _tier) public view returns (uint256) {
     if (prizePool.isCanaryTier(_tier)) {
-      return prizePool.getTierPrizeSize(_tier);
+      return type(uint256).max; // no limit
     } else {
       return _computeMaxFee(_tier);
     }
+  }
+
+  /// @notice Compute the starting fee for prize claims
+  /// @return The starting fee for prize claims
+  function _computeFeeTarget() internal view returns (uint256) {
+    uint8 numberOfTiers = prizePool.numberOfTiers();
+    // we expect the fee to match the second canary tier
+    return prizePool.getTierPrizeSize(numberOfTiers - 2);
+  }
+
+  /// @notice Computes the decay constant for the VRGDA.
+  /// @dev This is a decay constant that ensures the fee will grow to the target max fee
+  /// @param _targetFee The starting fee 
+  /// @return The decay constant
+  function _computeDecayConstant(uint256 _targetFee) internal view returns (SD59x18) {
+    uint maximumFee = _computeMaxFee(0);
+    return LinearVRGDALib.getDecayConstant(
+      LinearVRGDALib.getMaximumPriceDeltaScale(
+        _targetFee,
+        maximumFee,
+        timeToReachMaxFee
+      )
+    );
   }
 
   /// @notice Computes the max fee given the tier
@@ -285,7 +286,7 @@ contract Claimer {
   }
 
   /// @notice Computes the fee for the next claim.
-  /// @param _minimumFee The minimum fee that should be charged
+  /// @param _targetFee The minimum fee that should be charged
   /// @param _decayConstant The VRGDA decay constant
   /// @param _perTimeUnit The num to be claimed per second
   /// @param _elapsed The number of seconds that have elapsed
@@ -293,7 +294,7 @@ contract Claimer {
   /// @param _maxFee The maximum fee that can be charged
   /// @return The fee to charge for the next claim
   function _computeFeeForNextClaim(
-    uint256 _minimumFee,
+    uint256 _targetFee,
     SD59x18 _decayConstant,
     SD59x18 _perTimeUnit,
     uint256 _elapsed,
@@ -301,7 +302,7 @@ contract Claimer {
     uint256 _maxFee
   ) internal pure returns (uint256) {
     uint256 fee = LinearVRGDALib.getVRGDAPrice(
-      _minimumFee,
+      _targetFee,
       _elapsed,
       _sold,
       _perTimeUnit,

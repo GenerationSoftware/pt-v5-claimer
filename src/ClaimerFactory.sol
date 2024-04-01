@@ -12,16 +12,12 @@ contract ClaimerFactory {
   /**
    * @notice Emitted when a new claimer contract is created.
    * @param prizePool The prize pool to claim for
-   * @param minimumFee The minimum fee that should be charged
-   * @param maximumFee The maximum fee that should be charged
    * @param timeToReachMaxFee The time it should take to reach the maximum fee
    * @param maxFeePortionOfPrize The maximum fee that can be charged as a portion of the prize size. Fixed point 18 number
    */
   event ClaimerCreated(
     Claimer indexed claimer,
     PrizePool indexed prizePool,
-    uint256 minimumFee,
-    uint256 maximumFee,
     uint256 timeToReachMaxFee,
     UD2x18 maxFeePortionOfPrize
   );
@@ -44,15 +40,11 @@ contract ClaimerFactory {
    */
   function createClaimer(
     PrizePool _prizePool,
-    uint256 _minimumFee,
-    uint256 _maximumFee,
     uint256 _timeToReachMaxFee,
     UD2x18 _maxFeePortionOfPrize
   ) external returns (Claimer) {
     Claimer _claimer = new Claimer(
       _prizePool,
-      _minimumFee,
-      _maximumFee,
       _timeToReachMaxFee,
       _maxFeePortionOfPrize
     );
@@ -60,8 +52,6 @@ contract ClaimerFactory {
     emit ClaimerCreated(
       _claimer,
       _prizePool,
-      _minimumFee,
-      _maximumFee,
       _timeToReachMaxFee,
       _maxFeePortionOfPrize
     );

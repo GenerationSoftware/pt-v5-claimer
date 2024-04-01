@@ -12,8 +12,6 @@ contract ClaimerFactoryTest is Test {
   event ClaimerCreated(
     Claimer indexed claimer,
     PrizePool indexed prizePool,
-    uint256 minimumFee,
-    uint256 maximumFee,
     uint256 timeToReachMaxFee,
     UD2x18 maxFeePortionOfPrize
   );
@@ -21,8 +19,6 @@ contract ClaimerFactoryTest is Test {
   PrizePool public prizePool = PrizePool(address(0x1234));
   ClaimerFactory public factory;
 
-  uint256 minimumFee = 0.0001e18;
-  uint256 maximumFee = 1000e18;
   uint256 timeToReachMaxFee = 86400;
   UD2x18 maxFeePortionOfPrize = UD2x18.wrap(0.1e18);
 
@@ -40,21 +36,16 @@ contract ClaimerFactoryTest is Test {
     emit ClaimerCreated(
       Claimer(claimerAddress),
       prizePool,
-      minimumFee,
-      maximumFee,
       timeToReachMaxFee,
       maxFeePortionOfPrize
     );
     Claimer claimer = factory.createClaimer(
       prizePool,
-      minimumFee,
-      maximumFee,
       timeToReachMaxFee,
       maxFeePortionOfPrize
     );
 
     assertEq(address(claimer.prizePool()), address(prizePool));
-    assertEq(claimer.minimumFee(), minimumFee);
     assertEq(claimer.timeToReachMaxFee(), timeToReachMaxFee);
     assertEq(claimer.maxFeePortionOfPrize().unwrap(), maxFeePortionOfPrize.unwrap());
 
