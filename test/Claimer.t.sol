@@ -332,7 +332,7 @@ contract ClaimerTest is Test {
     uint prizeCount = 10;
     vm.mockCall(
       address(prizePool),
-      abi.encodeWithSignature("estimatedPrizeCount()"),
+      abi.encodeWithSignature("estimatedPrizeCountWithBothCanaries()"),
       abi.encode(prizeCount)
     );
     vm.mockCall(
@@ -358,7 +358,7 @@ contract ClaimerTest is Test {
     uint prizeCount = 10;
     vm.mockCall(
       address(prizePool),
-      abi.encodeWithSignature("estimatedPrizeCount()"),
+      abi.encodeWithSignature("estimatedPrizeCountWithBothCanaries()"),
       abi.encode(prizeCount)
     );
     vm.mockCall(
@@ -390,7 +390,7 @@ contract ClaimerTest is Test {
     );
     vm.mockCall(
       address(prizePool),
-      abi.encodeWithSignature("estimatedPrizeCount()"),
+      abi.encodeWithSignature("estimatedPrizeCountWithBothCanaries()"),
       abi.encodePacked(ESTIMATED_PRIZES)
     );
     vm.mockCall(
