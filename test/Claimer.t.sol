@@ -184,7 +184,18 @@ contract ClaimerTest is Test {
     address[] memory winners = newWinners(winner1);
     uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
     mockPrizePool(1, -100, 0);
-    mockClaimPrize(1, winner1, 0, uint96(NO_SALES_100_SECONDS_BEHIND_SCHEDULE_FEE), address(this), 0);
+    vm.mockCallRevert(
+      address(vault),
+      abi.encodeWithSelector(
+        vault.claimPrize.selector,
+        winner1,
+        1,
+        0,
+        uint96(NO_SALES_100_SECONDS_BEHIND_SCHEDULE_FEE),
+        address(this)
+      ),
+      abi.encodeWithSelector(AlreadyClaimed.selector, address(vault), winner1, 1, 0)
+    );
     vm.expectEmit(true, true, true, true);
     emit ClaimError(vault, 1, winner1, 0, abi.encodeWithSelector(AlreadyClaimed.selector, address(vault), winner1, 1, 0));
     claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);

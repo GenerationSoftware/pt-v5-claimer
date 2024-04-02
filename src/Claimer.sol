@@ -251,8 +251,8 @@ contract Claimer {
     }
   }
 
-  /// @notice Compute the starting fee for prize claims
-  /// @return The starting fee for prize claims
+  /// @notice Compute the target fee for prize claims
+  /// @return The target fee for prize claims
   function _computeFeeTarget() internal view returns (uint256) {
     uint8 numberOfTiers = prizePool.numberOfTiers();
     // we expect the fee to match the second canary tier
@@ -260,8 +260,8 @@ contract Claimer {
   }
 
   /// @notice Computes the decay constant for the VRGDA.
-  /// @dev This is a decay constant that ensures the fee will grow to the target max fee
-  /// @param _targetFee The starting fee 
+  /// @dev This is a decay constant that ensures the fee will grow from the target to the max fee within the time frame
+  /// @param _targetFee The target fee 
   /// @return The decay constant
   function _computeDecayConstant(uint256 _targetFee) internal view returns (SD59x18) {
     uint maximumFee = _computeMaxFee(0);
@@ -286,7 +286,7 @@ contract Claimer {
   }
 
   /// @notice Computes the fee for the next claim.
-  /// @param _targetFee The minimum fee that should be charged
+  /// @param _targetFee The target fee that should be charged
   /// @param _decayConstant The VRGDA decay constant
   /// @param _perTimeUnit The num to be claimed per second
   /// @param _elapsed The number of seconds that have elapsed
