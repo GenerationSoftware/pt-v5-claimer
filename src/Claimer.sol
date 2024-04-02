@@ -242,7 +242,7 @@ contract Claimer {
     }
     uint256 _maxFee = _computeMaxFee(_tier);
     SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(
-      prizePool.estimatedPrizeCount(),
+      prizePool.estimatedPrizeCountWithBothCanaries(),
       timeToReachMaxFee
     );
     uint256 elapsed = block.timestamp - (prizePool.lastAwardedDrawAwardedAt());
