@@ -126,7 +126,7 @@ contract Claimer {
   function _countClaims(
     address[] calldata _winners,
     uint32[][] calldata _prizeIndices
-  ) internal view returns (uint256) {
+  ) internal pure returns (uint256) {
     uint256 claimCount;
     uint256 length = _winners.length;
     for (uint256 i = 0; i < length; i++) {
