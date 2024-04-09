@@ -29,12 +29,12 @@ contract ClaimerTest is Test {
     bytes reason
   );
 
-  uint256 public MINIMUM_FEE = 0.0001e18;
-  uint256 public MAXIMUM_FEE = 1000e18;
+  uint256 public PRIZE_SIZE_GP = 1000000e18;
+  uint256 public PRIZE_SIZE_DAILY = 500e18;
+  uint256 public PRIZE_SIZE_C1 = 0.01e18;
+  uint256 public PRIZE_SIZE_C2 = 0.0001e18;
   uint256 public TIME_TO_REACH_MAX = 86400;
   uint256 public ESTIMATED_PRIZES = 1000;
-  uint256 public SMALLEST_PRIZE_SIZE = 1e18;
-  uint256 public CANARY_PRIZE_SIZE = 0.4e18;
   uint256 public NO_SALES_100_SECONDS_BEHIND_SCHEDULE_FEE = 100243095112994;
   uint256 public SOLD_ONE_100_SECONDS_IN_FEE = 98708714827462;
   uint64 public MAX_FEE_PERCENTAGE_OF_PRIZE = 0.5e18;
@@ -63,6 +63,11 @@ contract ClaimerTest is Test {
     mockIsCanaryTier(1, false);
     mockIsCanaryTier(2, true);
     mockIsCanaryTier(3, true);
+
+    mockGetTierPrizeSize(0, PRIZE_SIZE_GP);
+    mockGetTierPrizeSize(1, PRIZE_SIZE_DAILY);
+    mockGetTierPrizeSize(2, PRIZE_SIZE_C1);
+    mockGetTierPrizeSize(3, PRIZE_SIZE_C2);
   }
 
   function testConstructor() public {
@@ -204,21 +209,19 @@ contract ClaimerTest is Test {
   function testClaimPrizes_maxFee() public {
     address[] memory winners = newWinners(winner1);
     uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
-    mockPrizePool(1, -1, 0);
-    mockLastClosedDrawAwardedAt(-80000); // much time has passed, meaning the fee is large
-    mockClaimPrize(1, winner1, 0, uint96(0.5e18), address(this), 100);
+    mockPrizePool(1, -1 * int256((99 * TIME_TO_REACH_MAX) / 100), 0); // much time has passed, meaning the fee is large
+    mockClaimPrize(1, winner1, 0, uint96(PRIZE_SIZE_DAILY / 2), address(this), PRIZE_SIZE_DAILY);
     uint256 totalFees = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);
-    assertEq(totalFees, 0.5e18, "Total fees");
+    assertEq(totalFees, PRIZE_SIZE_DAILY / 2, "Total fees");
   }
 
   function testClaimPrizes_veryLongElapsedTime() public {
     address[] memory winners = newWinners(winner1);
     uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
-    mockPrizePool(1, -1, 0);
-    mockLastClosedDrawAwardedAt(-1_000_000); // a long time has passed, meaning the fee should be capped (and there should be no EXP_OVERFLOW!)
-    mockClaimPrize(1, winner1, 0, uint96(0.5e18), address(this), 100);
+    mockPrizePool(1, -1_000_000, 0);// a long time has passed, meaning the fee should be capped (and there should be no EXP_OVERFLOW!)
+    mockClaimPrize(1, winner1, 0, uint96(PRIZE_SIZE_DAILY / 2), address(this), PRIZE_SIZE_DAILY);
     uint256 totalFees = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);
-    assertEq(totalFees, 0.5e18, "Total fees");
+    assertEq(totalFees, PRIZE_SIZE_DAILY / 2, "Total fees");
   }
 
   function testClaimPrizes_arrayMismatchGt() public {
@@ -277,26 +280,20 @@ contract ClaimerTest is Test {
   }
 
   function testComputeTotalFees_canary() public {
-    mockIsCanaryTier(1, true);
-    mockGetTierPrizeSize(1, 100e18);
     vm.mockCall(
       address(prizePool),
       abi.encodeWithSelector(prizePool.claimCount.selector),
       abi.encode(0)
     );
-    assertEq(claimer.computeTotalFees(1, 1), 100e18);
+    assertEq(claimer.computeTotalFees(2, 1), PRIZE_SIZE_C1);
   }
 
   function testComputeMaxFee_normalPrizes() public {
-    mockGetTierPrizeSize(0, 10e18);
-    mockGetTierPrizeSize(1, SMALLEST_PRIZE_SIZE);
-    assertEq(claimer.computeMaxFee(0), 5e18);
-    assertEq(claimer.computeMaxFee(1), 0.5e18);
+    assertEq(claimer.computeMaxFee(0), PRIZE_SIZE_GP / 2);
+    assertEq(claimer.computeMaxFee(1), PRIZE_SIZE_DAILY / 2);
   }
 
   function testComputeMaxFee_canaryPrizes() public {
-    mockGetTierPrizeSize(2, 0.5e18);
-    mockGetTierPrizeSize(3, 1e18);
     assertEq(claimer.computeMaxFee(2), type(uint256).max); // full size
     assertEq(claimer.computeMaxFee(3), type(uint256).max); // full size
   }
@@ -312,7 +309,7 @@ contract ClaimerTest is Test {
       ud2x18(MAX_FEE_PERCENTAGE_OF_PRIZE)
     );
     mockPrizePool(1, -int(firstSaleTime), 0);
-    assertApproxEqAbs(claimer.computeFeePerClaim(0, 1), MINIMUM_FEE, 4);
+    assertApproxEqAbs(claimer.computeFeePerClaim(0, 1), PRIZE_SIZE_C2, 4);
   }
 
   function testComputeFeePerClaim_maxFee() public {
@@ -322,11 +319,10 @@ contract ClaimerTest is Test {
     uint firstSaleTime = TIME_TO_REACH_MAX / ESTIMATED_PRIZES;
 
     vm.warp(startTime + firstSaleTime + TIME_TO_REACH_MAX + 1);
-    assertApproxEqAbs(claimer.computeFeePerClaim(0, 1), MAXIMUM_FEE/2 /* 50% */, 4);
+    assertApproxEqRel(claimer.computeFeePerClaim(0, 1), PRIZE_SIZE_DAILY, 0.02e18);
   }
 
   function mockPrizePool(uint256 drawId, int256 drawEndedRelativeToNow, uint256 claimCount) public {
-    uint numberOfTiers = 3;
     vm.mockCall(
       address(prizePool),
       abi.encodeWithSignature("getLastClosedDrawId()"),
@@ -342,9 +338,6 @@ contract ClaimerTest is Test {
       abi.encodeWithSignature("estimatedPrizeCountWithBothCanaries()"),
       abi.encodePacked(ESTIMATED_PRIZES)
     );
-    mockGetTierPrizeSize(1, SMALLEST_PRIZE_SIZE);
-    mockGetTierPrizeSize(2, MINIMUM_FEE);
-    mockGetTierPrizeSize(0, MAXIMUM_FEE);
     mockLastClosedDrawAwardedAt(drawEndedRelativeToNow);
     vm.mockCall(
       address(prizePool),
