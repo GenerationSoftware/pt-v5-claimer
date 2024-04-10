@@ -216,8 +216,9 @@ contract Claimer {
     if (prizePool.isCanaryTier(_tier)) {
       return prizePool.getTierPrizeSize(_tier);
     }
-    uint256 targetFee = _computeFeeTarget();
-    SD59x18 decayConstant = _computeDecayConstant(targetFee);
+    uint8 numberOfTiers = prizePool.numberOfTiers();
+    uint256 targetFee = _computeFeeTarget(numberOfTiers);
+    SD59x18 decayConstant = _computeDecayConstant(targetFee, numberOfTiers);
     uint256 _maxFee = _computeMaxFee(_tier);
     SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(
       prizePool.estimatedPrizeCountWithBothCanaries(),
@@ -252,19 +253,23 @@ contract Claimer {
   }
 
   /// @notice Compute the target fee for prize claims
+  /// @param _numberOfTiers The current number of tiers for the prize pool
   /// @return The target fee for prize claims
-  function _computeFeeTarget() internal view returns (uint256) {
-    uint8 numberOfTiers = prizePool.numberOfTiers();
-    // we expect the fee to match the second canary tier
-    return prizePool.getTierPrizeSize(numberOfTiers - 2);
+  function _computeFeeTarget(uint8 _numberOfTiers) internal view returns (uint256) {
+    // we expect the fee to be somewhere between the first and second canary tier prize sizes,
+    // so we set it to the lower of the two.
+    return prizePool.getTierPrizeSize(_numberOfTiers - 1);
   }
 
   /// @notice Computes the decay constant for the VRGDA.
   /// @dev This is a decay constant that ensures the fee will grow from the target to the max fee within the time frame
-  /// @param _targetFee The target fee 
+  /// @param _targetFee The target fee
+  /// @param _numberOfTiers The current number of tiers for the prize pool
   /// @return The decay constant
-  function _computeDecayConstant(uint256 _targetFee) internal view returns (SD59x18) {
-    uint maximumFee = _computeMaxFee(0);
+  function _computeDecayConstant(uint256 _targetFee, uint8 _numberOfTiers) internal view returns (SD59x18) {
+    // the max fee should never need to go beyond the full daily prize size under normal operating
+    // conditions.
+    uint maximumFee = prizePool.getTierPrizeSize(_numberOfTiers - 3);
     return LinearVRGDALib.getDecayConstant(
       LinearVRGDALib.getMaximumPriceDeltaScale(
         _targetFee,
