@@ -16,6 +16,7 @@ import { SD59x18 } from "prb-math/SD59x18.sol";
 import { PrizePool, AlreadyClaimed } from "pt-v5-prize-pool/PrizePool.sol";
 import { IClaimable } from "pt-v5-claimable-interface/interfaces/IClaimable.sol";
 import { LinearVRGDALib } from "../src/libraries/LinearVRGDALib.sol";
+import { ReentrancyMock } from "./mock/ReentrancyMock.sol";
 
 // Custom Errors
 error ClaimArraySizeMismatch(uint256 winnersLength, uint256 prizeIndicesLength);
@@ -124,6 +125,32 @@ contract ClaimerTest is Test {
     mockClaimPrize(1, winner1, 0, uint96(NO_SALES_100_SECONDS_BEHIND_SCHEDULE_FEE), address(this), 100);
     uint256 totalFees = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);
     assertEq(totalFees, NO_SALES_100_SECONDS_BEHIND_SCHEDULE_FEE, "Total fees");
+  }
+
+  function testClaimPrizes_reentrancyGuard() public {
+    address[] memory winners = newWinners(winner1, winner2);
+    uint32[][] memory prizeIndices = newPrizeIndices(2, 1);
+
+    address[] memory reentrancyWinners = newWinners(winner3);
+    uint32[][] memory reentrancyPrizeIndices = newPrizeIndices(1, 1);
+
+    ReentrancyMock reentrancyVault = new ReentrancyMock(address(claimer));
+    reentrancyVault.setReentrancyClaimInfo(
+      winner1, // only triggerred by winner1
+      IClaimable(address(reentrancyVault)),
+      1,
+      reentrancyWinners,
+      reentrancyPrizeIndices,
+      address(this),
+      0
+    );
+
+    mockPrizePool(1, -100, 0);
+
+    vm.expectEmit();
+    emit ClaimError(IClaimable(address(reentrancyVault)), 1, winner1, 0, abi.encodeWithSignature("Error(string)", "ReentrancyGuard: reentrant call"));
+    uint256 totalFees = claimer.claimPrizes(reentrancyVault, 1, winners, prizeIndices, address(this), 0);
+    assertLt(totalFees, NO_SALES_100_SECONDS_BEHIND_SCHEDULE_FEE, "Total fees"); // 2 fee-split expected, but one fails so the received fees are slightly less
   }
 
   function testClaimPrizes_singleNoFeeSavesGas() public {
