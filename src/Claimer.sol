@@ -6,6 +6,7 @@ import { UD2x18 } from "prb-math/UD2x18.sol";
 import { UD60x18, convert } from "prb-math/UD60x18.sol";
 import { PrizePool } from "pt-v5-prize-pool/PrizePool.sol";
 import { SafeCast } from "openzeppelin/utils/math/SafeCast.sol";
+import { ReentrancyGuard } from "openzeppelin/security/ReentrancyGuard.sol";
 
 import { LinearVRGDALib } from "./libraries/LinearVRGDALib.sol";
 import { IClaimable } from "pt-v5-claimable-interface/interfaces/IClaimable.sol";
@@ -32,7 +33,7 @@ error TimeToReachMaxFeeZero();
 /// @title Variable Rate Gradual Dutch Auction (VRGDA) Claimer
 /// @author G9 Software Inc.
 /// @notice This contract uses a variable rate gradual dutch auction to incentivize prize claims on behalf of others.  Fees for each canary tier is set to the respective tier's prize size.
-contract Claimer {
+contract Claimer is ReentrancyGuard {
 
   /// @notice Emitted when a claim reverts
   /// @param vault The vault for which the claim failed
@@ -94,7 +95,7 @@ contract Claimer {
     uint32[][] calldata _prizeIndices,
     address _feeRecipient,
     uint256 _minFeePerClaim
-  ) external returns (uint256 totalFees) {
+  ) external nonReentrant returns (uint256 totalFees) {
     bool feeRecipientZeroAddress = address(0) == _feeRecipient;
     if (feeRecipientZeroAddress && _minFeePerClaim != 0) {
       revert FeeRecipientZeroAddress();
