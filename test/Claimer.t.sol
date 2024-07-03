@@ -315,6 +315,25 @@ contract ClaimerTest is Test {
     assertEq(claimer.computeTotalFees(2, 1), PRIZE_SIZE_C1);
   }
 
+  function testComputeTotalFees_zeroDailyPrize() public {
+    mockGetTierPrizeSize(1, 0);
+    mockGetTierPrizeSize(2, 0);
+    mockGetTierPrizeSize(3, 0);
+    mockPrizePool(1, -100, 0);
+    // even though all other prizes are zero, the claim fee for the GP should still be non-zero
+    assertGt(claimer.computeTotalFees(0, 1, 0), 0);
+  }
+
+  function testComputeTotalFees_zeroCanaryPrize() public {
+    mockGetTierPrizeSize(2, 0);
+    mockGetTierPrizeSize(3, 0);
+    mockPrizePool(1, -100, 0);
+    // even though canaries are zero, the claim fee for the GP should still be non-zero
+    assertGt(claimer.computeTotalFees(0, 1, 0), 0);
+    // even though canaries are zero, the claim fee for the daily prizes should still be non-zero
+    assertGt(claimer.computeTotalFees(1, 1, 0), 0);
+  }
+
   function testComputeMaxFee_normalPrizes() public {
     assertEq(claimer.computeMaxFee(0), PRIZE_SIZE_GP / 2);
     assertEq(claimer.computeMaxFee(1), PRIZE_SIZE_DAILY / 2);

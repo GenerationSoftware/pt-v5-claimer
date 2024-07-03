@@ -218,9 +218,33 @@ contract Claimer is ReentrancyGuard {
       return prizePool.getTierPrizeSize(_tier);
     }
     uint8 numberOfTiers = prizePool.numberOfTiers();
-    uint256 targetFee = _computeFeeTarget(numberOfTiers);
-    SD59x18 decayConstant = _computeDecayConstant(targetFee, numberOfTiers);
-    uint256 _maxFee = _computeMaxFee(_tier);
+    uint256 maxFee = _computeMaxFee(_tier);
+
+    // we expect the fee to be somewhere between the first and second canary tier prize sizes,
+    // so we set it to the lower of the two.
+    uint256 targetFee = prizePool.getTierPrizeSize(numberOfTiers - 1);
+
+    // scope to avoid stack too deep error
+    SD59x18 decayConstant;
+    {
+      // the fee should never need to go beyond the full daily prize size under normal operating conditions
+      uint256 highFee = prizePool.getTierPrizeSize(numberOfTiers - 3);
+
+      // handle the case where the target fee is zero, high fee is zero, or high fee is less than the target fee
+      if (targetFee == 0 || highFee < targetFee) {
+
+        // we fall back to a tier-specific ramp up from 1% of the max fee to 100% of the max fee
+        targetFee = maxFee / 100;
+        highFee = maxFee;
+      }
+      decayConstant = LinearVRGDALib.getDecayConstant(
+        LinearVRGDALib.getMaximumPriceDeltaScale(
+          targetFee,
+          highFee,
+          timeToReachMaxFee
+        )
+      );
+    }
     SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(
       prizePool.estimatedPrizeCountWithBothCanaries(),
       timeToReachMaxFee
@@ -235,7 +259,7 @@ contract Claimer is ReentrancyGuard {
         perTimeUnit,
         elapsed,
         _claimedCount + i,
-        _maxFee
+        maxFee
       );
     }
 
@@ -251,33 +275,6 @@ contract Claimer is ReentrancyGuard {
     } else {
       return _computeMaxFee(_tier);
     }
-  }
-
-  /// @notice Compute the target fee for prize claims
-  /// @param _numberOfTiers The current number of tiers for the prize pool
-  /// @return The target fee for prize claims
-  function _computeFeeTarget(uint8 _numberOfTiers) internal view returns (uint256) {
-    // we expect the fee to be somewhere between the first and second canary tier prize sizes,
-    // so we set it to the lower of the two.
-    return prizePool.getTierPrizeSize(_numberOfTiers - 1);
-  }
-
-  /// @notice Computes the decay constant for the VRGDA.
-  /// @dev This is a decay constant that ensures the fee will grow from the target to the max fee within the time frame
-  /// @param _targetFee The target fee
-  /// @param _numberOfTiers The current number of tiers for the prize pool
-  /// @return The decay constant
-  function _computeDecayConstant(uint256 _targetFee, uint8 _numberOfTiers) internal view returns (SD59x18) {
-    // the max fee should never need to go beyond the full daily prize size under normal operating
-    // conditions.
-    uint maximumFee = prizePool.getTierPrizeSize(_numberOfTiers - 3);
-    return LinearVRGDALib.getDecayConstant(
-      LinearVRGDALib.getMaximumPriceDeltaScale(
-        _targetFee,
-        maximumFee,
-        timeToReachMaxFee
-      )
-    );
   }
 
   /// @notice Computes the max fee given the tier
