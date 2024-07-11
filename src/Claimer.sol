@@ -227,20 +227,17 @@ contract Claimer is ReentrancyGuard {
     // scope to avoid stack too deep error
     SD59x18 decayConstant;
     {
-      // the fee should never need to go beyond the full daily prize size under normal operating conditions
-      uint256 highFee = prizePool.getTierPrizeSize(numberOfTiers - 3);
 
-      // handle the case where the target fee is zero, high fee is zero, or high fee is less than the target fee
-      if (targetFee == 0 || highFee < targetFee) {
+      // handle the case where the target fee is zero, or max fee is less than the target fee
+      if (targetFee == 0 || maxFee < targetFee) {
 
         // we fall back to a tier-specific ramp up from 1% of the max fee to 100% of the max fee
         targetFee = maxFee / 100;
-        highFee = maxFee;
       }
       decayConstant = LinearVRGDALib.getDecayConstant(
         LinearVRGDALib.getMaximumPriceDeltaScale(
           targetFee,
-          highFee,
+          maxFee,
           timeToReachMaxFee
         )
       );
