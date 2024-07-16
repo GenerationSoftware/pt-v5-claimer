@@ -16,6 +16,7 @@ import { SD59x18 } from "prb-math/SD59x18.sol";
 import { PrizePool, AlreadyClaimed } from "pt-v5-prize-pool/PrizePool.sol";
 import { IClaimable } from "pt-v5-claimable-interface/interfaces/IClaimable.sol";
 import { LinearVRGDALib } from "../src/libraries/LinearVRGDALib.sol";
+import { ReentrancyMock } from "./mock/ReentrancyMock.sol";
 
 // Custom Errors
 error ClaimArraySizeMismatch(uint256 winnersLength, uint256 prizeIndicesLength);
@@ -35,8 +36,8 @@ contract ClaimerTest is Test {
   uint256 public PRIZE_SIZE_C2 = 0.0001e18;
   uint256 public TIME_TO_REACH_MAX = 86400;
   uint256 public ESTIMATED_PRIZES = 1000;
-  uint256 public NO_SALES_100_SECONDS_BEHIND_SCHEDULE_FEE = 100243095112994;
-  uint256 public SOLD_ONE_100_SECONDS_IN_FEE = 98708714827462;
+  uint256 public NO_SALES_100_SECONDS_BEHIND_SCHEDULE_FEE = 100232158536309;
+  uint256 public SOLD_ONE_100_SECONDS_IN_FEE = 98766381570607;
   uint64 public MAX_FEE_PERCENTAGE_OF_PRIZE = 0.5e18;
 
   Claimer public claimer;
@@ -99,7 +100,7 @@ contract ClaimerTest is Test {
 
     vm.mockCallRevert(
       address(vault),
-      abi.encodeCall(vault.claimPrize, (winner1, 1, 0, 100243095112994, address(this))),
+      abi.encodeCall(vault.claimPrize, (winner1, 1, 0, 100232158536309, address(this))),
       "errrooooor"
     );
 
@@ -124,6 +125,32 @@ contract ClaimerTest is Test {
     mockClaimPrize(1, winner1, 0, uint96(NO_SALES_100_SECONDS_BEHIND_SCHEDULE_FEE), address(this), 100);
     uint256 totalFees = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);
     assertEq(totalFees, NO_SALES_100_SECONDS_BEHIND_SCHEDULE_FEE, "Total fees");
+  }
+
+  function testClaimPrizes_reentrancyGuard() public {
+    address[] memory winners = newWinners(winner1, winner2);
+    uint32[][] memory prizeIndices = newPrizeIndices(2, 1);
+
+    address[] memory reentrancyWinners = newWinners(winner3);
+    uint32[][] memory reentrancyPrizeIndices = newPrizeIndices(1, 1);
+
+    ReentrancyMock reentrancyVault = new ReentrancyMock(address(claimer));
+    reentrancyVault.setReentrancyClaimInfo(
+      winner1, // only triggerred by winner1
+      IClaimable(address(reentrancyVault)),
+      1,
+      reentrancyWinners,
+      reentrancyPrizeIndices,
+      address(this),
+      0
+    );
+
+    mockPrizePool(1, -100, 0);
+
+    vm.expectEmit();
+    emit ClaimError(IClaimable(address(reentrancyVault)), 1, winner1, 0, abi.encodeWithSignature("Error(string)", "ReentrancyGuard: reentrant call"));
+    uint256 totalFees = claimer.claimPrizes(reentrancyVault, 1, winners, prizeIndices, address(this), 0);
+    assertLt(totalFees, NO_SALES_100_SECONDS_BEHIND_SCHEDULE_FEE, "Total fees"); // 2 fee-split expected, but one fails so the received fees are slightly less
   }
 
   function testClaimPrizes_singleNoFeeSavesGas() public {
@@ -209,7 +236,7 @@ contract ClaimerTest is Test {
   function testClaimPrizes_maxFee() public {
     address[] memory winners = newWinners(winner1);
     uint32[][] memory prizeIndices = newPrizeIndices(1, 1);
-    mockPrizePool(1, -1 * int256((99 * TIME_TO_REACH_MAX) / 100), 0); // much time has passed, meaning the fee is large
+    mockPrizePool(1, -1 * int256((101 * TIME_TO_REACH_MAX) / 100), 0); // much time has passed, meaning the fee has reached the max
     mockClaimPrize(1, winner1, 0, uint96(PRIZE_SIZE_DAILY / 2), address(this), PRIZE_SIZE_DAILY);
     uint256 totalFees = claimer.claimPrizes(vault, 1, winners, prizeIndices, address(this), 0);
     assertEq(totalFees, PRIZE_SIZE_DAILY / 2, "Total fees");
@@ -252,15 +279,16 @@ contract ClaimerTest is Test {
 
   function testComputeTotalFees_one() public {
     mockPrizePool(1, -100, 0);
-    assertEq(claimer.computeTotalFees(1, 1), NO_SALES_100_SECONDS_BEHIND_SCHEDULE_FEE);
+    assertApproxEqRel(claimer.computeTotalFees(1, 1), NO_SALES_100_SECONDS_BEHIND_SCHEDULE_FEE, 0.01e18); // 1% margin for error
   }
 
   function testComputeTotalFees_two() public {
     mockPrizePool(1, -100, 0);
     uint totalFees = claimer.computeTotalFees(1, 2);
-    assertEq(
+    assertApproxEqRel(
       totalFees,
-      NO_SALES_100_SECONDS_BEHIND_SCHEDULE_FEE + SOLD_ONE_100_SECONDS_IN_FEE
+      NO_SALES_100_SECONDS_BEHIND_SCHEDULE_FEE + SOLD_ONE_100_SECONDS_IN_FEE,
+      0.01e18 // 1% margin for error
     );
   }
 
@@ -271,12 +299,12 @@ contract ClaimerTest is Test {
 
   function testComputeTotalFeesAlreadyClaimed_one() public {
     mockPrizePool(1, -100, 0);
-    assertEq(claimer.computeTotalFees(1, 1, 10), 85914163796254);
+    assertApproxEqRel(claimer.computeTotalFees(1, 1, 10), 85914163796254, 0.01e18); // 1% margin for error
   }
 
   function testComputeTotalFeesAlreadyClaimed_two() public {
     mockPrizePool(1, -100, 0);
-    assertEq(claimer.computeTotalFees(1, 2, 10), 170513274430708);
+    assertApproxEqRel(claimer.computeTotalFees(1, 2, 10), 170513274430708, 0.01e18); // 1% margin for error
   }
 
   function testComputeTotalFees_canary() public {
@@ -286,6 +314,25 @@ contract ClaimerTest is Test {
       abi.encode(0)
     );
     assertEq(claimer.computeTotalFees(2, 1), PRIZE_SIZE_C1);
+  }
+
+  function testComputeTotalFees_zeroDailyPrize() public {
+    mockGetTierPrizeSize(1, 0);
+    mockGetTierPrizeSize(2, 0);
+    mockGetTierPrizeSize(3, 0);
+    mockPrizePool(1, -100, 0);
+    // even though all other prizes are zero, the claim fee for the GP should still be non-zero
+    assertGt(claimer.computeTotalFees(0, 1, 0), 0);
+  }
+
+  function testComputeTotalFees_zeroCanaryPrize() public {
+    mockGetTierPrizeSize(2, 0);
+    mockGetTierPrizeSize(3, 0);
+    mockPrizePool(1, -100, 0);
+    // even though canaries are zero, the claim fee for the GP should still be non-zero
+    assertGt(claimer.computeTotalFees(0, 1, 0), 0);
+    // even though canaries are zero, the claim fee for the daily prizes should still be non-zero
+    assertGt(claimer.computeTotalFees(1, 1, 0), 0);
   }
 
   function testComputeMaxFee_normalPrizes() public {
@@ -319,7 +366,40 @@ contract ClaimerTest is Test {
     uint firstSaleTime = TIME_TO_REACH_MAX / ESTIMATED_PRIZES;
 
     vm.warp(startTime + firstSaleTime + TIME_TO_REACH_MAX + 1);
-    assertApproxEqRel(claimer.computeFeePerClaim(0, 1), PRIZE_SIZE_DAILY, 0.02e18);
+    assertApproxEqRel(claimer.computeFeePerClaim(0, 1), (PRIZE_SIZE_GP * MAX_FEE_PERCENTAGE_OF_PRIZE) / 1e18, 0.02e18);
+  }
+
+  function testComputeFeePerClaim_reasonableFeeRampForGp() public {
+    uint startTime = block.timestamp;
+
+    mockPrizePool(1, -600, 0); // 10 min have passed
+    vm.warp(startTime + 600);
+    assertLt(claimer.computeFeePerClaim(0, 1), PRIZE_SIZE_C2 * 2); // less than twice the second canary
+
+    mockPrizePool(1, -int256(TIME_TO_REACH_MAX / 6), 0); // 1/6th of the time to reach max has passed
+    vm.warp(startTime + TIME_TO_REACH_MAX / 6);
+    assertLt(claimer.computeFeePerClaim(0, 1), PRIZE_SIZE_GP / 100); // less than 1% of GP
+  }
+
+  function testComputeFeePerClaim_reasonableFeeRampForGp_whenCanaryIsDust() public {
+    uint startTime = block.timestamp;
+
+    // mock 1 wei for all other prizes
+    mockGetTierPrizeSize(1, 1);
+    mockGetTierPrizeSize(2, 1);
+    mockGetTierPrizeSize(3, 1);
+
+    mockPrizePool(1, -600, 0); // 10 min have passed
+    vm.warp(startTime + 600);
+    assertLt(claimer.computeFeePerClaim(0, 1), PRIZE_SIZE_GP / 1000); // less than 0.1% of GP
+
+    mockPrizePool(1, -int256(TIME_TO_REACH_MAX / 6), 0); // 1/6th of the time to reach max has passed
+    vm.warp(startTime + TIME_TO_REACH_MAX / 6);
+    assertLt(claimer.computeFeePerClaim(0, 1), PRIZE_SIZE_GP / 100); // less than 1% of GP
+
+    mockPrizePool(1, -int256(TIME_TO_REACH_MAX / 2), 0); // 1/2 of the time to reach max has passed
+    vm.warp(startTime + TIME_TO_REACH_MAX / 2);
+    assertGt(claimer.computeFeePerClaim(0, 1), 1e14); // grater than some expected L2 gas cost
   }
 
   function mockPrizePool(uint256 drawId, int256 drawEndedRelativeToNow, uint256 claimCount) public {

@@ -6,6 +6,7 @@ import { UD2x18 } from "prb-math/UD2x18.sol";
 import { UD60x18, convert } from "prb-math/UD60x18.sol";
 import { PrizePool } from "pt-v5-prize-pool/PrizePool.sol";
 import { SafeCast } from "openzeppelin/utils/math/SafeCast.sol";
+import { ReentrancyGuard } from "openzeppelin/security/ReentrancyGuard.sol";
 
 import { LinearVRGDALib } from "./libraries/LinearVRGDALib.sol";
 import { IClaimable } from "pt-v5-claimable-interface/interfaces/IClaimable.sol";
@@ -32,7 +33,7 @@ error TimeToReachMaxFeeZero();
 /// @title Variable Rate Gradual Dutch Auction (VRGDA) Claimer
 /// @author G9 Software Inc.
 /// @notice This contract uses a variable rate gradual dutch auction to incentivize prize claims on behalf of others.  Fees for each canary tier is set to the respective tier's prize size.
-contract Claimer {
+contract Claimer is ReentrancyGuard {
 
   /// @notice Emitted when a claim reverts
   /// @param vault The vault for which the claim failed
@@ -94,7 +95,7 @@ contract Claimer {
     uint32[][] calldata _prizeIndices,
     address _feeRecipient,
     uint256 _minFeePerClaim
-  ) external returns (uint256 totalFees) {
+  ) external nonReentrant returns (uint256 totalFees) {
     bool feeRecipientZeroAddress = address(0) == _feeRecipient;
     if (feeRecipientZeroAddress && _minFeePerClaim != 0) {
       revert FeeRecipientZeroAddress();
@@ -217,9 +218,30 @@ contract Claimer {
       return prizePool.getTierPrizeSize(_tier);
     }
     uint8 numberOfTiers = prizePool.numberOfTiers();
-    uint256 targetFee = _computeFeeTarget(numberOfTiers);
-    SD59x18 decayConstant = _computeDecayConstant(targetFee, numberOfTiers);
-    uint256 _maxFee = _computeMaxFee(_tier);
+    uint256 maxFee = _computeMaxFee(_tier);
+
+    // we expect the fee to be somewhere between the first and second canary tier prize sizes,
+    // so we set it to the lower of the two.
+    uint256 targetFee = prizePool.getTierPrizeSize(numberOfTiers - 1);
+
+    // scope to avoid stack too deep error
+    SD59x18 decayConstant;
+    {
+
+      // handle the case where the target fee is zero, or max fee is less than the target fee
+      if (targetFee == 0 || maxFee < targetFee) {
+
+        // we fall back to a tier-specific ramp up from 1% of the max fee to 100% of the max fee
+        targetFee = maxFee / 100;
+      }
+      decayConstant = LinearVRGDALib.getDecayConstant(
+        LinearVRGDALib.getMaximumPriceDeltaScale(
+          targetFee,
+          maxFee,
+          timeToReachMaxFee
+        )
+      );
+    }
     SD59x18 perTimeUnit = LinearVRGDALib.getPerTimeUnit(
       prizePool.estimatedPrizeCountWithBothCanaries(),
       timeToReachMaxFee
@@ -234,7 +256,7 @@ contract Claimer {
         perTimeUnit,
         elapsed,
         _claimedCount + i,
-        _maxFee
+        maxFee
       );
     }
 
@@ -250,33 +272,6 @@ contract Claimer {
     } else {
       return _computeMaxFee(_tier);
     }
-  }
-
-  /// @notice Compute the target fee for prize claims
-  /// @param _numberOfTiers The current number of tiers for the prize pool
-  /// @return The target fee for prize claims
-  function _computeFeeTarget(uint8 _numberOfTiers) internal view returns (uint256) {
-    // we expect the fee to be somewhere between the first and second canary tier prize sizes,
-    // so we set it to the lower of the two.
-    return prizePool.getTierPrizeSize(_numberOfTiers - 1);
-  }
-
-  /// @notice Computes the decay constant for the VRGDA.
-  /// @dev This is a decay constant that ensures the fee will grow from the target to the max fee within the time frame
-  /// @param _targetFee The target fee
-  /// @param _numberOfTiers The current number of tiers for the prize pool
-  /// @return The decay constant
-  function _computeDecayConstant(uint256 _targetFee, uint8 _numberOfTiers) internal view returns (SD59x18) {
-    // the max fee should never need to go beyond the full daily prize size under normal operating
-    // conditions.
-    uint maximumFee = prizePool.getTierPrizeSize(_numberOfTiers - 3);
-    return LinearVRGDALib.getDecayConstant(
-      LinearVRGDALib.getMaximumPriceDeltaScale(
-        _targetFee,
-        maximumFee,
-        timeToReachMaxFee
-      )
-    );
   }
 
   /// @notice Computes the max fee given the tier
