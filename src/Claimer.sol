@@ -151,7 +151,7 @@ contract Claimer is ReentrancyGuard {
     uint32[][] calldata _prizeIndices,
     address _feeRecipient,
     uint96 _feePerClaim
-  ) internal returns (uint256) {
+  ) internal virtual returns (uint256) {
     uint256 actualClaimCount;
     uint256 prizeIndicesLength;
 
