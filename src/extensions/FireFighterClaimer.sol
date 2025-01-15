@@ -79,6 +79,7 @@ contract FireFighterClaimer is Claimer {
             _vault.claimPrize(_winners[w], _tier, _prizeIndices[w][p], SafeCast.toUint96(prizeSize), address(this))
           returns (uint256 /* prizeSize */) {
             actualClaimCount++;
+            prizePool.withdrawRewards(address(this), prizeSize);
             IERC20 prizeToken = IERC20(address(prizePool.prizeToken()));
             prizeToken.safeTransfer(_feeRecipient, _feePerClaim);
             uint256 remainder = prizeToken.balanceOf(address(this)); // Get the full remaining balance incase tokens were sent to this address through other means

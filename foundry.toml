@@ -4,4 +4,7 @@ out = 'out'
 solc = "0.8.24"
 libs = ['lib']
 
+[rpc_endpoints]
+optimism = "${OPTIMISM_RPC_URL}"
+
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
